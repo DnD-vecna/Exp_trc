@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modern Expense Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
+        {% raw %}
         /* AESTHETIC BACKGROUND */
         body {
             background-image: url('https://thumbs.dreamstime.com/b/nice-theme-landscape-anime-background-colors-nice-theme-landscape-anime-background-349420745.jpg');
@@ -86,14 +86,13 @@
         .glass-light:hover #chart-container {
             filter: drop-shadow(0 0 8px rgba(59,130,246,0.12));
         }
+        {% endraw %}
     </style>
 </head>
 <body class="font-sans antialiased text-gray-900 min-h-screen">
 
-    <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
 
-    <!-- LOGIN SECTION -->
     <div id="login-section" class="min-h-screen flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300">
         <div class="glass-dark p-8 rounded-2xl w-96 text-center float">
             <h1 class="text-3xl font-bold mb-2 text-white tracking-wide">Expense Tracker</h1>
@@ -108,10 +107,8 @@
         </div>
     </div>
 
-    <!-- DASHBOARD SECTION (Hidden by default) -->
     <div id="dashboard-section" class="hidden min-h-screen fade-in pb-10">
         
-        <!-- Navigation (Floating Glass Nav) -->
         <div class="max-w-7xl mx-auto pt-6 px-6">
             <nav class="glass-light px-6 py-4 flex justify-between items-center rounded-2xl">
                 <h1 class="text-xl font-extrabold text-gray-800 tracking-tight">Expense Dashboard</h1>
@@ -125,10 +122,8 @@
 
         <div class="max-w-7xl mx-auto px-6 pt-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            <!-- LEFT COLUMN: Summary & Add Form -->
             <div class="space-y-6 lg:col-span-1">
                 
-                <!-- Monthly Summary Cards -->
                 <div class="glass-light rounded-2xl p-6 hover:-translate-y-1 transition-transform duration-300">
                     <h2 class="text-lg font-bold mb-4 border-b border-gray-300/50 pb-2 text-gray-800">This Month's Summary</h2>
                     <div class="grid grid-cols-2 gap-4 text-center mb-4">
@@ -147,7 +142,6 @@
                     </div>
                 </div>
 
-                <!-- Add Transaction Form -->
                 <div class="glass-light rounded-2xl p-6 hover:-translate-y-1 transition-transform duration-300">
                     <h2 class="text-lg font-bold mb-4 border-b border-gray-300/50 pb-2 text-gray-800">Add New Entry</h2>
                     <form id="add-form" onsubmit="addTransaction(event)" class="space-y-4">
@@ -177,10 +171,8 @@
                 </div>
             </div>
 
-            <!-- RIGHT COLUMN: Transactions Table + Chart -->
             <div class="lg:col-span-2 space-y-8">
 
-                <!-- Transaction History -->
                 <div class="glass-light rounded-2xl p-6 flex flex-col h-[420px] hover:-translate-y-1 transition-transform duration-300">
                     <div class="flex justify-between items-center mb-4 border-b border-gray-300/50 pb-3">
                         <h2 class="text-lg font-bold text-gray-800">Transaction History</h2>
@@ -188,7 +180,6 @@
                             Delete All Data
                         </button>
                     </div>
-                    <!-- Overflow container for table -->
                     <div class="overflow-y-auto flex-grow rounded-xl pr-2">
                         <table class="min-w-full text-left border-collapse">
                             <thead class="sticky top-0 bg-white/80 backdrop-blur-md shadow-sm z-10 rounded-t-xl">
@@ -200,23 +191,17 @@
                                 </tr>
                             </thead>
                             <tbody id="transaction-table" class="text-sm">
-                                <!-- JS injected rows -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- =============================== -->
-                <!-- SPENDING ANALYTICS CHART CARD   -->
-                <!-- =============================== -->
                 <div class="glass-light rounded-2xl p-6 hover:-translate-y-1 transition-transform duration-300">
-                    <!-- Card Header with Toggle -->
                     <div class="flex justify-between items-center mb-5 border-b border-gray-300/50 pb-3">
                         <div>
                             <h2 class="text-lg font-bold text-gray-800">Spending Analytics</h2>
                             <p class="text-xs text-gray-500 mt-0.5">Expenses over time</p>
                         </div>
-                        <!-- Time Toggle Button Group -->
                         <div class="flex gap-1.5 bg-white/40 border border-white/60 rounded-xl p-1 shadow-sm">
                             <button id="toggle-week"  class="toggle-btn active" onclick="setChartRange('week')">Week</button>
                             <button id="toggle-month" class="toggle-btn"        onclick="setChartRange('month')">Month</button>
@@ -224,12 +209,10 @@
                         </div>
                     </div>
 
-                    <!-- Canvas -->
                     <div id="chart-container" style="position:relative; height:260px;">
                         <canvas id="spendingChart"></canvas>
                     </div>
 
-                    <!-- Legend row -->
                     <div class="flex gap-6 mt-4 justify-center text-xs font-semibold text-gray-500">
                         <span class="flex items-center gap-1.5">
                             <span class="inline-block w-3 h-3 rounded-full" style="background:#ef4444;"></span>Expenses
@@ -239,29 +222,27 @@
                         </span>
                     </div>
                 </div>
-                <!-- END CHART CARD -->
-
             </div>
         </div>
     </div>
 
-    <!-- JAVASCRIPT LOGIC -->
     <script>
-        const API_URL = "http://127.0.0.1:8000/api";
+        // CHANGE 1: Switched to relative path to work on Render
+        const API_URL = "/api"; 
+        
+        {% raw %}
         let UID = localStorage.getItem("expense_uid");
 
-        // ── Global state for chart ──────────────────────────────────────────
-        let allTransactions = [];   // cache from API
-        let chartRange = 'week';    // active toggle
-        let spendingChart = null;   // Chart.js instance
+        // Global state for chart
+        let allTransactions = [];   
+        let chartRange = 'week';    
+        let spendingChart = null;   
 
-        // Initialization
         window.onload = () => {
             document.getElementById('t-date').valueAsDate = new Date();
             if (UID) showDashboard();
         };
 
-        // --- UI UTILITY: TOAST NOTIFICATIONS ---
         function showToast(message, type = "success") {
             const toast = document.createElement("div");
             const color = type === "success" ? "bg-green-600" : type === "error" ? "bg-red-600" : "bg-blue-600";
@@ -276,7 +257,6 @@
             }, 3000);
         }
 
-        // --- AUTH LOGIC ---
         async function login() {
             const input = document.getElementById('uid-input').value.trim();
             if (!input) return showToast("Please enter a UID", "error");
@@ -296,7 +276,7 @@
                     showToast("Error connecting to server.", "error");
                 }
             } catch (error) {
-                showToast("Cannot reach server. Is Python running?", "error");
+                showToast("Cannot reach server.", "error");
             } finally {
                 btn.innerText = "Access Dashboard";
                 btn.disabled = false;
@@ -319,7 +299,6 @@
             loadData();
         }
 
-        // --- REAL-TIME DATA FETCHING ---
         async function loadData() {
             await Promise.all([loadTransactions(), loadSummary()]);
         }
@@ -327,14 +306,14 @@
         async function loadTransactions() {
             const res = await fetch(`${API_URL}/transactions`, { headers: { "X-User-UID": UID } });
             const data = await res.json();
-            allTransactions = data; // ← cache for chart use
+            allTransactions = data; 
 
             const tbody = document.getElementById('transaction-table');
             tbody.innerHTML = "";
             
             if (data.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-gray-500 font-medium italic bg-white/30 rounded-lg mt-2 block w-full">No transactions yet. Add one to get started!</td></tr>`;
-                renderChart(); // render empty chart
+                renderChart(); 
                 return;
             }
 
@@ -354,7 +333,7 @@
                 `;
             });
 
-            renderChart(); // ← update chart whenever transactions load
+            renderChart(); 
         }
 
         async function loadSummary() {
@@ -369,7 +348,6 @@
                 : "text-3xl font-extrabold text-red-500 drop-shadow-sm";
         }
 
-        // --- ADDING DATA ---
         async function addTransaction(e) {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');
@@ -405,76 +383,50 @@
             }
         }
 
-        // --- CLEARING DATA ---
         async function clearTransactions() {
-            if (!confirm("Are you absolutely sure you want to clear ALL transactions? This cannot be undone.")) return;
+            if (!confirm("Are you absolutely sure you want to clear ALL transactions?")) return;
             await fetch(`${API_URL}/transactions`, { method: "DELETE", headers: { "X-User-UID": UID } });
-            showToast("All data cleared from dashboard.", "info");
+            showToast("All data cleared.", "info");
             loadData();
         }
 
-
-        // ═══════════════════════════════════════════════════════════════════
-        //  SPENDING ANALYTICS — CHART.JS INTEGRATION
-        // ═══════════════════════════════════════════════════════════════════
-
-        /** Called when a toggle button is clicked */
         function setChartRange(range) {
             chartRange = range;
-
-            // Update active styling on buttons
             ['week', 'month', 'year'].forEach(r => {
                 document.getElementById(`toggle-${r}`).classList.toggle('active', r === range);
             });
-
             renderChart();
         }
 
-        /**
-         * Core data-processing function.
-         * Returns { labels, expenseData, incomeData } arrays
-         * depending on the active chartRange.
-         */
         function buildChartData() {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
             if (chartRange === 'week') {
-                // Last 7 days — one bucket per day
                 const labels = [];
                 const expBuckets = {};
                 const incBuckets = {};
-
                 for (let i = 6; i >= 0; i--) {
                     const d = new Date(today);
                     d.setDate(today.getDate() - i);
-                    const key = d.toISOString().slice(0, 10); // "YYYY-MM-DD"
+                    const key = d.toISOString().slice(0, 10);
                     const label = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric' });
                     labels.push(label);
                     expBuckets[key] = 0;
                     incBuckets[key] = 0;
                 }
-
                 allTransactions.forEach(t => {
                     if (expBuckets.hasOwnProperty(t.date)) {
                         if (t.t_type === 'Expense') expBuckets[t.date] += t.amount;
                         else incBuckets[t.date] += t.amount;
                     }
                 });
-
-                return {
-                    labels,
-                    expenseData: Object.values(expBuckets),
-                    incomeData: Object.values(incBuckets)
-                };
-
+                return { labels, expenseData: Object.values(expBuckets), incomeData: Object.values(incBuckets) };
             } else if (chartRange === 'month') {
-                // Current month — one bucket per calendar week (Week 1–5)
                 const year = today.getFullYear();
                 const month = today.getMonth();
                 const daysInMonth = new Date(year, month + 1, 0).getDate();
                 const weekBuckets = { 'Wk 1': [0, 0], 'Wk 2': [0, 0], 'Wk 3': [0, 0], 'Wk 4': [0, 0], 'Wk 5': [0, 0] };
-
                 allTransactions.forEach(t => {
                     const d = new Date(t.date);
                     if (d.getFullYear() !== year || d.getMonth() !== month) return;
@@ -483,39 +435,24 @@
                     if (t.t_type === 'Expense') weekBuckets[key][0] += t.amount;
                     else weekBuckets[key][1] += t.amount;
                 });
-
-                // Only include weeks that exist in current month
                 const totalWeeks = Math.ceil(daysInMonth / 7);
                 const labels = Object.keys(weekBuckets).slice(0, totalWeeks);
-                return {
-                    labels,
-                    expenseData: labels.map(k => weekBuckets[k][0]),
-                    incomeData: labels.map(k => weekBuckets[k][1])
-                };
-
+                return { labels, expenseData: labels.map(k => weekBuckets[k][0]), incomeData: labels.map(k => weekBuckets[k][1]) };
             } else {
-                // Year — one bucket per month
                 const year = today.getFullYear();
                 const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                 const expBuckets = Array(12).fill(0);
                 const incBuckets = Array(12).fill(0);
-
                 allTransactions.forEach(t => {
                     const d = new Date(t.date);
                     if (d.getFullYear() !== year) return;
                     if (t.t_type === 'Expense') expBuckets[d.getMonth()] += t.amount;
                     else incBuckets[d.getMonth()] += t.amount;
                 });
-
-                return {
-                    labels: monthNames,
-                    expenseData: expBuckets,
-                    incomeData: incBuckets
-                };
+                return { labels: monthNames, expenseData: expBuckets, incomeData: incBuckets };
             }
         }
 
-        /** Create gradient fill for dataset */
         function makeGradient(ctx, colorTop, colorBottom) {
             const gradient = ctx.createLinearGradient(0, 0, 0, 260);
             gradient.addColorStop(0, colorTop);
@@ -523,12 +460,10 @@
             return gradient;
         }
 
-        /** Build or update the Chart.js instance */
         function renderChart() {
             const { labels, expenseData, incomeData } = buildChartData();
             const canvas = document.getElementById('spendingChart');
             const ctx = canvas.getContext('2d');
-
             const expGradient = makeGradient(ctx, 'rgba(239,68,68,0.35)', 'rgba(239,68,68,0.02)');
             const incGradient = makeGradient(ctx, 'rgba(34,197,94,0.30)', 'rgba(34,197,94,0.02)');
 
@@ -546,7 +481,6 @@
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
                         pointRadius: 5,
-                        pointHoverRadius: 7,
                         borderWidth: 2.5,
                     },
                     {
@@ -560,7 +494,6 @@
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
                         pointRadius: 5,
-                        pointHoverRadius: 7,
                         borderWidth: 2.5,
                     }
                 ]
@@ -569,19 +502,10 @@
             const chartOptions = {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
                 plugins: {
-                    legend: { display: false },  // using custom legend below canvas
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: 'rgba(15,23,42,0.85)',
-                        titleColor: '#93c5fd',
-                        bodyColor: '#e2e8f0',
-                        borderColor: 'rgba(255,255,255,0.15)',
-                        borderWidth: 1,
-                        padding: 12,
                         cornerRadius: 10,
                         callbacks: {
                             label: ctx => ` ${ctx.dataset.label}: Rs ${ctx.parsed.y.toFixed(2)}`
@@ -589,47 +513,19 @@
                     }
                 },
                 scales: {
-                    x: {
-                        grid: { color: 'rgba(0,0,0,0.05)', drawTicks: false },
-                        ticks: {
-                            color: '#6b7280',
-                            font: { size: 11, weight: '600' }
-                        },
-                        border: { display: false }
-                    },
-                    y: {
-                        grid: { color: 'rgba(0,0,0,0.06)', drawTicks: false },
-                        ticks: {
-                            color: '#6b7280',
-                            font: { size: 11 },
-                            callback: v => v === 0 ? '0' : `₹${(v >= 1000 ? (v/1000).toFixed(1)+'k' : v)}`
-                        },
-                        border: { display: false },
-                        beginAtZero: true
-                    }
-                },
-                animation: {
-                    duration: 500,
-                    easing: 'easeInOutQuart'
+                    x: { ticks: { color: '#6b7280', font: { weight: '600' } }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { color: '#6b7280' } }
                 }
             };
 
             if (spendingChart) {
-                // Update existing instance (no flicker)
                 spendingChart.data = chartData;
-                spendingChart.options = chartOptions;
                 spendingChart.update();
             } else {
-                // Create fresh instance
-                spendingChart = new Chart(ctx, {
-                    type: 'line',
-                    data: chartData,
-                    options: chartOptions
-                });
+                spendingChart = new Chart(ctx, { type: 'line', data: chartData, options: chartOptions });
             }
         }
-        // ═══════════════════════════════════════════════════════════════════
-
+        {% endraw %}
     </script>
 </body>
 </html>
