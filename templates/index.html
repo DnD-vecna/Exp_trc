@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        {%- raw -%}
+        {% raw %}
         body {
             background-image: url('https://thumbs.dreamstime.com/b/nice-theme-landscape-anime-background-colors-nice-theme-landscape-anime-background-349420745.jpg');
             background-size: cover;
@@ -15,23 +15,15 @@
             background-attachment: fixed;
             background-repeat: no-repeat;
         }
-        .glass-dark {
-            background: rgba(15, 23, 42, 0.65);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .glass-light {
-            background: rgba(255, 255, 255, 0.75);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-        }
+        .glass-dark { background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-light { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.4); }
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .float { animation: float 6s ease-in-out infinite; }
         @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
         .toggle-btn { padding: 5px 14px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.3); }
         .toggle-btn.active { background: rgba(37, 99, 235, 0.15); color: #1d4ed8; border-color: rgba(59,130,246,0.5); }
-        {%- endraw -%}
+        {% endraw %}
     </style>
 </head>
 <body class="font-sans antialiased text-gray-900 min-h-screen">
@@ -41,17 +33,17 @@
         <div class="glass-dark p-8 rounded-2xl w-96 text-center float">
             <h1 class="text-3xl font-bold mb-2 text-white">Expense Tracker</h1>
             <input type="text" id="uid-input" placeholder="Unique Key" class="w-full px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl mb-4 text-center">
-            <button id="login-btn" onclick="login()" class="w-full bg-blue-500 text-white py-3 rounded-xl font-bold">Access Dashboard</button>
+            <button id="login-btn" onclick="login()" class="w-full bg-blue-500 text-white py-3 rounded-xl font-bold shadow-lg">Access Dashboard</button>
         </div>
     </div>
 
     <div id="dashboard-section" class="hidden min-h-screen fade-in pb-10">
         <div class="max-w-7xl mx-auto pt-6 px-6">
             <nav class="glass-light px-6 py-4 flex justify-between items-center rounded-2xl">
-                <h1 class="text-xl font-extrabold text-gray-800">Dashboard</h1>
+                <h1 class="text-xl font-extrabold text-gray-800">Expense Dashboard</h1>
                 <div class="flex items-center gap-4">
                     <span class="text-sm">UID: <strong id="display-uid" class="text-blue-600"></strong></span>
-                    <button onclick="logout()" class="text-sm text-red-500 font-bold">Logout</button>
+                    <button onclick="logout()" class="text-sm text-red-500 font-bold hover:text-red-700 transition-colors">Logout</button>
                 </div>
             </nav>
         </div>
@@ -61,31 +53,43 @@
                 <div class="glass-light rounded-2xl p-6">
                     <h2 class="font-bold mb-4">Summary</h2>
                     <div class="grid grid-cols-2 gap-4 text-center mb-4">
-                        <div class="bg-white/50 p-3 rounded-xl"><p class="text-xs text-green-600">INCOME</p><p id="sum-income" class="font-bold">0.00</p></div>
-                        <div class="bg-white/50 p-3 rounded-xl"><p class="text-xs text-red-500">SPENT</p><p id="sum-expense" class="font-bold">0.00</p></div>
+                        <div class="bg-white/50 p-3 rounded-xl border"><p class="text-xs text-green-600 uppercase font-bold">Income</p><p id="sum-income" class="text-xl font-bold text-green-700">0.00</p></div>
+                        <div class="bg-white/50 p-3 rounded-xl border"><p class="text-xs text-red-500 uppercase font-bold">Spent</p><p id="sum-expense" class="text-xl font-bold text-red-600">0.00</p></div>
                     </div>
-                    <div class="bg-blue-50/60 p-4 rounded-xl text-center"><p class="text-xs text-blue-600">BALANCE</p><p id="sum-balance" class="text-3xl font-extrabold">0.00</p></div>
+                    <div class="bg-blue-50/60 p-4 rounded-xl text-center border-blue-200 border"><p class="text-xs text-blue-600 uppercase font-bold">Balance</p><p id="sum-balance" class="text-3xl font-extrabold text-blue-700">0.00</p></div>
                 </div>
 
                 <div class="glass-light rounded-2xl p-6">
                     <h2 class="font-bold mb-4">Add Entry</h2>
                     <form onsubmit="addTransaction(event)" class="space-y-4">
-                        <select id="t-type" class="w-full p-2.5 rounded-xl border"><option value="Expense">Expense</option><option value="Income">Income</option></select>
-                        <input type="text" id="t-cat" required placeholder="Category" class="w-full p-2.5 rounded-xl border">
-                        <input type="number" id="t-amt" required step="0.01" placeholder="Amount" class="w-full p-2.5 rounded-xl border">
-                        <input type="date" id="t-date" required class="w-full p-2.5 rounded-xl border">
-                        <button type="submit" class="w-full bg-black text-white py-3 rounded-xl font-bold">Save</button>
+                        <select id="t-type" class="w-full p-2.5 rounded-xl border bg-white/50"><option value="Expense">Expense</option><option value="Income">Income</option></select>
+                        <input type="text" id="t-cat" required placeholder="Category" class="w-full p-2.5 rounded-xl border bg-white/50">
+                        <input type="number" id="t-amt" required step="0.01" placeholder="Amount" class="w-full p-2.5 rounded-xl border bg-white/50">
+                        <input type="date" id="t-date" required class="w-full p-2.5 rounded-xl border bg-white/50">
+                        <button type="submit" class="w-full bg-black text-white py-3 rounded-xl font-bold shadow-md hover:bg-gray-800 transition-all">Save Entry</button>
                     </form>
                 </div>
             </div>
 
             <div class="lg:col-span-2 space-y-8">
-                <div class="glass-light rounded-2xl p-6 h-[400px] flex flex-col">
-                    <h2 class="font-bold mb-4">History</h2>
-                    <div class="overflow-y-auto flex-grow"><table class="w-full text-left"><thead><tr class="text-xs uppercase"><th>Date</th><th>Type</th><th>Category</th><th class="text-right">Amt</th></tr></thead><tbody id="transaction-table"></tbody></table></div>
+                <div class="glass-light rounded-2xl p-6 h-[420px] flex flex-col">
+                    <h2 class="font-bold mb-4">Transaction History</h2>
+                    <div class="overflow-y-auto flex-grow pr-2">
+                        <table class="w-full text-left">
+                            <thead class="sticky top-0 bg-white/80 backdrop-blur-md">
+                                <tr class="text-xs uppercase text-gray-500 font-bold border-b">
+                                    <th class="py-2">Date</th><th>Type</th><th>Category</th><th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transaction-table" class="text-sm"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="glass-light rounded-2xl p-6">
-                    <div class="flex justify-between mb-4"><h2 class="font-bold">Analytics</h2><div class="flex gap-1.5"><button id="toggle-week" onclick="setChartRange('week')" class="toggle-btn active">Week</button><button id="toggle-month" onclick="setChartRange('month')" class="toggle-btn">Month</button></div></div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold">Spending Analytics</h2>
+                        <div class="flex gap-1.5"><button id="toggle-week" onclick="setChartRange('week')" class="toggle-btn active">Week</button><button id="toggle-month" onclick="setChartRange('month')" class="toggle-btn">Month</button></div>
+                    </div>
                     <div style="height:250px;"><canvas id="spendingChart"></canvas></div>
                 </div>
             </div>
@@ -94,7 +98,7 @@
 
     <script>
         const API_URL = "/api"; 
-        {%- raw -%}
+        {% raw %}
         let UID = localStorage.getItem("expense_uid");
         let allTransactions = [];
         let chartRange = 'week';
@@ -104,7 +108,7 @@
 
         function showToast(m, t = "success") {
             const toast = document.createElement("div");
-            toast.className = `bg-gray-800 text-white px-6 py-3 rounded shadow-lg fade-in`;
+            toast.className = `bg-gray-900 text-white px-6 py-3 rounded-lg shadow-xl font-bold fade-in`;
             toast.innerText = m;
             document.getElementById("toast-container").appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
@@ -114,8 +118,10 @@
             const val = document.getElementById('uid-input').value.trim();
             if (!val) return;
             UID = val;
-            const res = await fetch(`${API_URL}/auth`, { method: "POST", headers: { "X-User-UID": UID } });
-            if (res.ok) { localStorage.setItem("expense_uid", UID); showDashboard(); }
+            try {
+                const res = await fetch(`${API_URL}/auth`, { method: "POST", headers: { "X-User-UID": UID } });
+                if (res.ok) { localStorage.setItem("expense_uid", UID); showDashboard(); }
+            } catch (e) { showToast("Connection failed", "error"); }
         }
 
         function logout() { localStorage.removeItem("expense_uid"); location.reload(); }
@@ -128,25 +134,27 @@
         }
 
         async function loadData() {
-            const res = await fetch(`${API_URL}/transactions`, { headers: { "X-User-UID": UID } });
-            allTransactions = await res.json();
-            const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers: { "X-User-UID": UID } });
-            const s = await sumRes.json();
-            
-            document.getElementById('sum-income').innerText = s.total_income.toFixed(2);
-            document.getElementById('sum-expense').innerText = s.total_spent.toFixed(2);
-            document.getElementById('sum-balance').innerText = s.balance.toFixed(2);
+            try {
+                const res = await fetch(`${API_URL}/transactions`, { headers: { "X-User-UID": UID } });
+                allTransactions = await res.json();
+                const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers: { "X-User-UID": UID } });
+                const s = await sumRes.json();
+                
+                document.getElementById('sum-income').innerText = s.total_income.toFixed(2);
+                document.getElementById('sum-expense').innerText = s.total_spent.toFixed(2);
+                document.getElementById('sum-balance').innerText = s.balance.toFixed(2);
 
-            const tbody = document.getElementById('transaction-table');
-            tbody.innerHTML = allTransactions.map(t => `
-                <tr class="border-b text-sm">
-                    <td class="py-2">${t.date}</td>
-                    <td>${t.t_type}</td>
-                    <td>${t.category}</td>
-                    <td class="text-right font-bold">${t.amount.toFixed(2)}</td>
-                </tr>
-            `).join('');
-            renderChart();
+                const tbody = document.getElementById('transaction-table');
+                tbody.innerHTML = allTransactions.map(t => `
+                    <tr class="border-b hover:bg-white/40 transition-colors">
+                        <td class="py-3">${t.date}</td>
+                        <td class="text-xs font-bold">${t.t_type}</td>
+                        <td>${t.category}</td>
+                        <td class="text-right font-black ${t.t_type === 'Income' ? 'text-green-600' : 'text-gray-900'}">${t.amount.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+                renderChart();
+            } catch (e) { console.error(e); }
         }
 
         async function addTransaction(e) {
@@ -157,28 +165,34 @@
                 amount: parseFloat(document.getElementById('t-amt').value),
                 date: document.getElementById('t-date').value
             };
-            await fetch(`${API_URL}/transactions`, {
+            const res = await fetch(`${API_URL}/transactions`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "X-User-UID": UID },
                 body: JSON.stringify(payload)
             });
-            loadData();
+            if (res.ok) { document.getElementById('t-cat').value = ''; document.getElementById('t-amt').value = ''; loadData(); showToast("Saved!"); }
         }
 
-        function setChartRange(r) { chartRange = r; renderChart(); }
+        function setChartRange(r) { 
+            chartRange = r; 
+            document.getElementById('toggle-week').classList.toggle('active', r === 'week');
+            document.getElementById('toggle-month').classList.toggle('active', r === 'month');
+            renderChart(); 
+        }
 
         function renderChart() {
             const ctx = document.getElementById('spendingChart').getContext('2d');
-            const labels = allTransactions.map(t => t.date).slice(0,7);
-            const data = allTransactions.map(t => t.amount).slice(0,7);
+            const sorted = [...allTransactions].sort((a,b) => new Date(a.date) - new Date(b.date));
+            const labels = sorted.map(t => t.date).slice(-7);
+            const data = sorted.map(t => t.amount).slice(-7);
             if (spendingChart) spendingChart.destroy();
             spendingChart = new Chart(ctx, {
                 type: 'line',
-                data: { labels, datasets: [{ label: 'Amount', data, borderColor: '#3b82f6', tension: 0.4 }] },
-                options: { responsive: true, maintainAspectRatio: false }
+                data: { labels, datasets: [{ label: 'Amount', data, borderColor: '#3b82f6', tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
         }
-        {%- endraw -%}
+        {% endraw %}
     </script>
 </body>
 </html>
