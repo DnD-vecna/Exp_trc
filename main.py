@@ -19,10 +19,13 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    # FIXED: Using explicit context dictionary to prevent Jinja2 hashing errors
+    return templates.TemplateResponse(
+        name="index.html", 
+        context={"request": request}
+    )
 
 # --- DATABASE SETUP ---
-
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./expenses.db")
 
 engine = create_engine(
@@ -53,7 +56,6 @@ class DBTransaction(Base):
 Base.metadata.create_all(bind=engine)
 
 # --- SCHEMAS ---
-
 class TransactionCreate(BaseModel):
     date: datetime.date = None
     t_type: str
@@ -66,7 +68,6 @@ class TransactionOut(TransactionCreate):
     model_config = ConfigDict(from_attributes=True)
 
 # --- CORS ---
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # change later for security
@@ -76,7 +77,6 @@ app.add_middleware(
 )
 
 # --- DB DEPENDENCY ---
-
 def get_db():
     db = SessionLocal()
     try:
@@ -85,7 +85,6 @@ def get_db():
         db.close()
 
 # --- USER DEPENDENCY ---
-
 def get_current_user(x_user_uid: str = Header(...), db: Session = Depends(get_db)):
     if not x_user_uid:
         raise HTTPException(status_code=400, detail="UID Header missing")
@@ -101,7 +100,6 @@ def get_current_user(x_user_uid: str = Header(...), db: Session = Depends(get_db
     return user
 
 # --- ROUTES ---
-
 @app.post("/api/auth")
 def authenticate(user: DBUser = Depends(get_current_user)):
     return {"message": "Authenticated", "uid": user.uid}
