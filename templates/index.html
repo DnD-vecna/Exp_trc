@@ -1,13 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern Expense Tracker</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         {% raw %}
+        /* AESTHETIC BACKGROUND */
         body {
             background-image: url('https://thumbs.dreamstime.com/b/nice-theme-landscape-anime-background-colors-nice-theme-landscape-anime-background-349420745.jpg');
             background-size: cover;
@@ -15,233 +9,318 @@
             background-attachment: fixed;
             background-repeat: no-repeat;
         }
+        .glass-dark { background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-light { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.4); }
 
+        /* GLASSMORPHISM EFFECTS */
         .glass-dark {
             background: rgba(15, 23, 42, 0.65);
             backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
 
         .glass-light {
             background: rgba(255, 255, 255, 0.75);
             backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
         }
 
+        /* ANIMATIONS */
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { 
             from { opacity: 0; transform: translateY(15px); } 
             to { opacity: 1; transform: translateY(0); } 
         }
 
         .float { animation: float 6s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+        .toggle-btn { padding: 5px 14px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.3); }
+        .toggle-btn.active { background: rgba(37, 99, 235, 0.15); color: #1d4ed8; border-color: rgba(59,130,246,0.5); }
         @keyframes float {
             0% { transform: translateY(0px); }
             50% { transform: translateY(-10px); }
             100% { transform: translateY(0px); }
         }
 
+        /* CUSTOM SCROLLBAR */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.5); border-radius: 10px; }
+
+        /* CHART TOGGLE BUTTONS */
         .toggle-btn {
             padding: 5px 14px;
             border-radius: 8px;
             font-size: 0.75rem;
             font-weight: 700;
+            letter-spacing: 0.05em;
             cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1.5px solid transparent;
             background: rgba(255,255,255,0.3);
+            color: #4b5563;
         }
         .toggle-btn.active {
             background: rgba(37, 99, 235, 0.15);
             color: #1d4ed8;
+            border-color: rgba(59,130,246,0.5);
         }
         {% endraw %}
     </style>
 </head>
-
 <body class="font-sans antialiased text-gray-900 min-h-screen">
 
-<div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
 
-<!-- LOGIN -->
-<div id="login-section" class="min-h-screen flex items-center justify-center bg-black/40">
-    <div class="glass-dark p-8 rounded-2xl w-96 text-center float">
-        <h1 class="text-3xl font-bold text-white">Expense Tracker</h1>
-        <input id="uid-input" class="w-full mt-4 p-3 rounded-xl" placeholder="Enter UID">
-        <button onclick="login()" class="mt-4 w-full bg-blue-500 text-white p-3 rounded-xl">Access</button>
-    </div>
-</div>
-
-<!-- DASHBOARD -->
-<div id="dashboard-section" class="hidden p-6">
-    <h1>Dashboard</h1>
-
-    <button onclick="logout()">Logout</button>
-
-    <form onsubmit="addTransaction(event)">
-        <select id="t-type">
-            <option>Expense</option>
-            <option>Income</option>
-        </select>
-        <input id="t-cat" required>
-        <input id="t-amt" type="number" required>
-        <input id="t-date" type="date" required>
-        <button type="submit">Save</button>
-    </form>
-
-    <table>
-        <tbody id="transaction-table"></tbody>
-    </table>
-
-    <!-- CHART -->
-    <div>
-        <button id="toggle-week" onclick="setChartRange('week')" class="toggle-btn active">Week</button>
-        <button id="toggle-month" onclick="setChartRange('month')" class="toggle-btn">Month</button>
-        <button id="toggle-year" onclick="setChartRange('year')" class="toggle-btn">Year</button>
+    <div id="login-section" class="min-h-screen flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div id="login-section" class="min-h-screen flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300">
+        <div class="glass-dark p-8 rounded-2xl w-96 text-center float">
+            <h1 class="text-3xl font-bold mb-2 text-white">Expense Tracker</h1>
+            <input type="text" id="uid-input" placeholder="Unique Key" class="w-full px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl mb-4 text-center">
+            <button id="login-btn" onclick="login()" class="w-full bg-blue-500 text-white py-3 rounded-xl font-bold shadow-lg">Access Dashboard</button>
+            <h1 class="text-3xl font-bold mb-2 text-white tracking-wide">Expense Tracker</h1>
+            <div class="bg-blue-900/40 border border-blue-400/30 text-blue-100 text-xs p-3 rounded-xl mb-6 text-left backdrop-blur-sm shadow-inner">
+                <strong>How it works:</strong> Enter a Unique Spreadsheet Key (UID). If it doesn't exist, we will create a new dashboard for you instantly.
+            </div>
+            <input type="text" id="uid-input" placeholder="e.g. MySecretKey123" class="w-full px-4 py-3 bg-white/10 border border-white/20 text-white placeholder-gray-300 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400 text-center font-semibold">
+            <button id="login-btn" onclick="login()" class="w-full bg-blue-500 hover:bg-blue-400 text-white py-3 rounded-xl transition-all duration-300 transform hover:scale-[1.02] font-bold shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+                Access Dashboard
+            </button>
+        </div>
     </div>
 
-    <div style="height:260px;">
-        <canvas id="spendingChart"></canvas>
-    </div>
-</div>
+    <div id="dashboard-section" class="hidden min-h-screen fade-in pb-10">
+        <div class="max-w-7xl mx-auto pt-6 px-6">
+            <nav class="glass-light px-6 py-4 flex justify-between items-center rounded-2xl">
+                <h1 class="text-xl font-extrabold text-gray-800">Expense Dashboard</h1>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm">UID: <strong id="display-uid" class="text-blue-600"></strong></span>
+                    <button onclick="logout()" class="text-sm text-red-500 font-bold hover:text-red-700 transition-colors">Logout</button>
+                <h1 class="text-xl font-extrabold text-gray-800 tracking-tight">Expense Dashboard</h1>
+                <div class="flex items-center gap-4 border border-white/60 bg-white/40 shadow-sm px-4 py-1.5 rounded-full backdrop-blur-sm">
+                    <span class="text-sm text-gray-600 font-medium">UID: <strong id="display-uid" class="text-blue-600"></strong></span>
+                    <span class="text-gray-400">|</span>
+                    <button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 font-bold transition-colors">Logout</button>
+                </div>
+            </nav>
+        </div>
 
-<script>
-const API_URL = "/api";
+        <div class="max-w-7xl mx-auto px-6 pt-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="space-y-6 lg:col-span-1">
+                <div class="glass-light rounded-2xl p-6">
+                    <h2 class="font-bold mb-4">Summary</h2>
+                    <h2 class="text-lg font-bold mb-4 border-b border-gray-300/50 pb-2">Monthly Summary</h2>
+                    <div class="grid grid-cols-2 gap-4 text-center mb-4">
+                        <div class="bg-white/50 p-3 rounded-xl border"><p class="text-xs text-green-600 uppercase font-bold">Income</p><p id="sum-income" class="text-xl font-bold text-green-700">0.00</p></div>
+                        <div class="bg-white/50 p-3 rounded-xl border"><p class="text-xs text-red-500 uppercase font-bold">Spent</p><p id="sum-expense" class="text-xl font-bold text-red-600">0.00</p></div>
+                        <div class="bg-white/50 rounded-xl p-3 border"><p class="text-xs text-green-600 uppercase font-bold">Income</p><p id="sum-income" class="text-xl font-bold text-green-700">0.00</p></div>
+                        <div class="bg-white/50 rounded-xl p-3 border"><p class="text-xs text-red-500 uppercase font-bold">Spent</p><p id="sum-expense" class="text-xl font-bold text-red-600">0.00</p></div>
+                    </div>
+                    <div class="bg-blue-50/60 rounded-xl p-4 border border-blue-200 text-center">
+                        <p class="text-xs text-blue-600 uppercase font-bold">Net Balance</p>
+                        <p id="sum-balance" class="text-3xl font-extrabold text-blue-700">0.00</p>
+                    </div>
+                    <div class="bg-blue-50/60 p-4 rounded-xl text-center border-blue-200 border"><p class="text-xs text-blue-600 uppercase font-bold">Balance</p><p id="sum-balance" class="text-3xl font-extrabold text-blue-700">0.00</p></div>
+                </div>
 
-let UID = localStorage.getItem("expense_uid");
-let allTransactions = [];
-let chartRange = 'week';
-let spendingChart = null;
+                <div class="glass-light rounded-2xl p-6">
+                    <h2 class="font-bold mb-4">Add Entry</h2>
+                    <h2 class="text-lg font-bold mb-4 border-b border-gray-300/50 pb-2">Add New Entry</h2>
+                    <form onsubmit="addTransaction(event)" class="space-y-4">
+                        <select id="t-type" class="w-full p-2.5 rounded-xl border bg-white/50"><option value="Expense">Expense</option><option value="Income">Income</option></select>
+                        <input type="text" id="t-cat" required placeholder="Category" class="w-full p-2.5 rounded-xl border bg-white/50">
+                        <input type="number" id="t-amt" required step="0.01" placeholder="Amount" class="w-full p-2.5 rounded-xl border bg-white/50">
+                        <input type="date" id="t-date" required class="w-full p-2.5 rounded-xl border bg-white/50">
+                        <button type="submit" class="w-full bg-black text-white py-3 rounded-xl font-bold shadow-md hover:bg-gray-800 transition-all">Save Entry</button>
+                        <select id="t-type" class="w-full p-2.5 bg-white/60 border border-white/50 rounded-xl outline-none"><option value="Expense">Expense</option><option value="Income">Income</option></select>
+                        <input type="text" id="t-cat" required placeholder="Category" class="w-full p-2.5 bg-white/60 border border-white/50 rounded-xl outline-none">
+                        <input type="number" id="t-amt" required step="0.01" placeholder="Amount (Rs)" class="w-full p-2.5 bg-white/60 border border-white/50 rounded-xl outline-none">
+                        <input type="date" id="t-date" required class="w-full p-2.5 bg-white/60 border border-white/50 rounded-xl outline-none">
+                        <button type="submit" class="w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black transition-all">Save Transaction</button>
+                    </form>
+                </div>
+            </div>
 
-window.onload = () => {
-    document.getElementById('t-date').valueAsDate = new Date();
-    if (UID) showDashboard();
-};
+            <div class="lg:col-span-2 space-y-8">
+                <div class="glass-light rounded-2xl p-6 h-[420px] flex flex-col">
+                    <h2 class="font-bold mb-4">Transaction History</h2>
+                    <div class="overflow-y-auto flex-grow pr-2">
+                        <table class="w-full text-left">
+                <div class="glass-light rounded-2xl p-6 flex flex-col h-[420px]">
+                    <div class="flex justify-between items-center mb-4 border-b pb-3">
+                        <h2 class="text-lg font-bold">Transaction History</h2>
+                        <button onclick="clearTransactions()" class="text-xs font-bold text-red-600 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-500 hover:text-white transition-all">Delete All</button>
+                    </div>
+                    <div class="overflow-y-auto flex-grow rounded-xl pr-2">
+                        <table class="min-w-full text-left">
+                            <thead class="sticky top-0 bg-white/80 backdrop-blur-md">
+                                <tr class="text-xs uppercase text-gray-500 font-bold border-b">
+                                    <th class="py-2">Date</th><th>Type</th><th>Category</th><th class="text-right">Amount</th>
+                                <tr class="text-xs uppercase text-gray-600 font-bold border-b">
+                                    <th class="py-3 px-4">Date</th><th>Type</th><th>Category</th><th class="text-right px-4">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transaction-table" class="text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
 
-function login() {
-    UID = document.getElementById('uid-input').value;
-    localStorage.setItem("expense_uid", UID);
-    showDashboard();
-}
+                <div class="glass-light rounded-2xl p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold">Spending Analytics</h2>
+                        <div class="flex gap-1.5"><button id="toggle-week" onclick="setChartRange('week')" class="toggle-btn active">Week</button><button id="toggle-month" onclick="setChartRange('month')" class="toggle-btn">Month</button></div>
+                    <div class="flex justify-between items-center mb-5 border-b pb-3">
+                        <h2 class="text-lg font-bold">Spending Analytics</h2>
+                        <div class="flex gap-1.5 bg-white/40 border rounded-xl p-1">
+                            <button id="toggle-week" class="toggle-btn active" onclick="setChartRange('week')">Week</button>
+                            <button id="toggle-month" class="toggle-btn" onclick="setChartRange('month')">Month</button>
+                            <button id="toggle-year" class="toggle-btn" onclick="setChartRange('year')">Year</button>
+                        </div>
+                    </div>
+                    <div style="height:250px;"><canvas id="spendingChart"></canvas></div>
+                    <div id="chart-container" style="height:260px;"><canvas id="spendingChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+@@ -104,12 +170,15 @@ <h2 class="font-bold">Spending Analytics</h2>
+        let chartRange = 'week';
+        let spendingChart = null;
 
-function logout() {
-    localStorage.removeItem("expense_uid");
-    location.reload();
-}
-
-function showDashboard() {
-    document.getElementById('login-section').classList.add('hidden');
-    document.getElementById('dashboard-section').classList.remove('hidden');
-    loadData();
-}
-
-async function loadData() {
-    const res = await fetch(`${API_URL}/transactions`, { headers: { "X-User-UID": UID } });
-    allTransactions = await res.json();
-
-    renderChart();
-}
-
-async function addTransaction(e) {
-    e.preventDefault();
-    const payload = {
-        t_type: document.getElementById('t-type').value,
-        category: document.getElementById('t-cat').value,
-        amount: parseFloat(document.getElementById('t-amt').value),
-        date: document.getElementById('t-date').value
-    };
-
-    await fetch(`${API_URL}/transactions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-UID": UID },
-        body: JSON.stringify(payload)
-    });
-
-    loadData();
-}
-
-function setChartRange(range) {
-    chartRange = range;
-    ['week','month','year'].forEach(r=>{
-        document.getElementById(`toggle-${r}`).classList.toggle('active', r===range);
-    });
-    renderChart();
-}
-
-function buildChartData() {
-    const today = new Date();
-    today.setHours(0,0,0,0);
-
-    if(chartRange==='week'){
-        const labels=[],exp={},inc={};
-
-        for(let i=6;i>=0;i--){
-            const d=new Date(today);
-            d.setDate(today.getDate()-i);
-            const key=d.toISOString().slice(0,10);
-            labels.push(d.toLocaleDateString());
-            exp[key]=0; inc[key]=0;
-        }
-
-        allTransactions.forEach(t=>{
-            if(exp[t.date]!=undefined){
-                if(t.t_type==='Expense') exp[t.date]+=t.amount;
-                else inc[t.date]+=t.amount;
-            }
-        });
-
-        return {labels,expenseData:Object.values(exp),incomeData:Object.values(inc)};
-    }
-
-    if(chartRange==='month'){
-        const buckets={'Wk1':[0,0],'Wk2':[0,0],'Wk3':[0,0],'Wk4':[0,0],'Wk5':[0,0]};
-        allTransactions.forEach(t=>{
-            const d=new Date(t.date);
-            const w=Math.floor((d.getDate()-1)/7);
-            if(t.t_type==='Expense') buckets[`Wk${w+1}`][0]+=t.amount;
-            else buckets[`Wk${w+1}`][1]+=t.amount;
-        });
-
-        const labels=Object.keys(buckets);
-        return {
-            labels,
-            expenseData:labels.map(k=>buckets[k][0]),
-            incomeData:labels.map(k=>buckets[k][1])
+        window.onload = () => { if (UID) showDashboard(); };
+        window.onload = () => { 
+            document.getElementById('t-date').valueAsDate = new Date();
+            if (UID) showDashboard(); 
         };
-    }
 
-    const exp=Array(12).fill(0),inc=Array(12).fill(0);
-    allTransactions.forEach(t=>{
-        const d=new Date(t.date);
-        if(t.t_type==='Expense') exp[d.getMonth()]+=t.amount;
-        else inc[d.getMonth()]+=t.amount;
-    });
-
-    return {labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],expenseData:exp,incomeData:inc};
-}
-
-function renderChart(){
-    const {labels,expenseData,incomeData}=buildChartData();
-    const ctx=document.getElementById('spendingChart').getContext('2d');
-
-    if(spendingChart){
-        spendingChart.data.labels=labels;
-        spendingChart.data.datasets[0].data=expenseData;
-        spendingChart.data.datasets[1].data=incomeData;
-        spendingChart.update();
-        return;
-    }
-
-    spendingChart=new Chart(ctx,{
-        type:'line',
-        data:{
-            labels,
-            datasets:[
-                {label:'Expenses',data:expenseData,borderColor:'#ef4444',tension:0.4},
-                {label:'Income',data:incomeData,borderColor:'#22c55e',tension:0.4}
-            ]
+        function showToast(m, t = "success") {
+        function showToast(message) {
+            const toast = document.createElement("div");
+            toast.className = `bg-gray-900 text-white px-6 py-3 rounded-lg shadow-xl font-bold fade-in`;
+            toast.innerText = m;
+            toast.className = `bg-gray-800 text-white px-6 py-3 rounded shadow-lg font-bold fade-in`;
+            toast.innerText = message;
+            document.getElementById("toast-container").appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
-    });
-}
-</script>
+@@ -121,7 +190,7 @@ <h2 class="font-bold">Spending Analytics</h2>
+            try {
+                const res = await fetch(`${API_URL}/auth`, { method: "POST", headers: { "X-User-UID": UID } });
+                if (res.ok) { localStorage.setItem("expense_uid", UID); showDashboard(); }
+            } catch (e) { showToast("Connection failed", "error"); }
+            } catch (e) { showToast("Connection error."); }
+        }
 
+        function logout() { localStorage.removeItem("expense_uid"); location.reload(); }
+@@ -137,6 +206,7 @@ <h2 class="font-bold">Spending Analytics</h2>
+            try {
+                const res = await fetch(`${API_URL}/transactions`, { headers: { "X-User-UID": UID } });
+                allTransactions = await res.json();
+                
+                const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers: { "X-User-UID": UID } });
+                const s = await sumRes.json();
+
+@@ -145,14 +215,14 @@ <h2 class="font-bold">Spending Analytics</h2>
+                document.getElementById('sum-balance').innerText = s.balance.toFixed(2);
+
+                const tbody = document.getElementById('transaction-table');
+                tbody.innerHTML = allTransactions.map(t => `
+                    <tr class="border-b hover:bg-white/40 transition-colors">
+                        <td class="py-3">${t.date}</td>
+                        <td class="text-xs font-bold">${t.t_type}</td>
+                        <td>${t.category}</td>
+                        <td class="text-right font-black ${t.t_type === 'Income' ? 'text-green-600' : 'text-gray-900'}">${t.amount.toFixed(2)}</td>
+                tbody.innerHTML = allTransactions.length ? allTransactions.map(t => `
+                    <tr class="border-b border-gray-200/60 hover:bg-white/50 transition-colors">
+                        <td class="py-3 px-4 text-gray-600 font-medium">${t.date}</td>
+                        <td class="py-3"><span class="px-2 py-1 rounded-md text-xs font-bold ${t.t_type === 'Income' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-800'}">${t.t_type}</span></td>
+                        <td class="py-3 font-semibold">${t.category}</td>
+                        <td class="py-3 text-right font-black px-4 ${t.t_type === 'Income' ? 'text-green-600' : 'text-gray-900'}">${t.amount.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+                `).join('') : '<tr><td colspan="4" class="py-10 text-center italic text-gray-400">No data found.</td></tr>';
+                renderChart();
+            } catch (e) { console.error(e); }
+        }
+@@ -170,28 +240,70 @@ <h2 class="font-bold">Spending Analytics</h2>
+                headers: { "Content-Type": "application/json", "X-User-UID": UID },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) { document.getElementById('t-cat').value = ''; document.getElementById('t-amt').value = ''; loadData(); showToast("Saved!"); }
+            if (res.ok) { 
+                document.getElementById('t-cat').value = ''; 
+                document.getElementById('t-amt').value = ''; 
+                loadData(); 
+                showToast("Entry Saved!"); 
+            }
+        }
+
+        async function clearTransactions() {
+            if (!confirm("Delete all data?")) return;
+            await fetch(`${API_URL}/transactions`, { method: "DELETE", headers: { "X-User-UID": UID } });
+            loadData();
+        }
+
+        function setChartRange(r) { 
+            chartRange = r; 
+            document.getElementById('toggle-week').classList.toggle('active', r === 'week');
+            document.getElementById('toggle-month').classList.toggle('active', r === 'month');
+            ['week', 'month', 'year'].forEach(btn => document.getElementById(`toggle-${btn}`).classList.toggle('active', btn === r));
+            renderChart(); 
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('spendingChart').getContext('2d');
+            const sorted = [...allTransactions].sort((a,b) => new Date(a.date) - new Date(b.date));
+            const labels = sorted.map(t => t.date).slice(-7);
+            const data = sorted.map(t => t.amount).slice(-7);
+            const { labels, expenseData, incomeData } = buildChartLogic();
+            
+            if (spendingChart) spendingChart.destroy();
+            
+            const expGrad = ctx.createLinearGradient(0, 0, 0, 260);
+            expGrad.addColorStop(0, 'rgba(239,68,68,0.3)'); expGrad.addColorStop(1, 'rgba(239,68,68,0)');
+            const incGrad = ctx.createLinearGradient(0, 0, 0, 260);
+            incGrad.addColorStop(0, 'rgba(34,197,94,0.3)'); incGrad.addColorStop(1, 'rgba(34,197,94,0)');
+
+            spendingChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets: [{ label: 'Amount', data, borderColor: '#3b82f6', tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)' }] },
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Expenses', data: expenseData, borderColor: '#ef4444', backgroundColor: expGrad, fill: true, tension: 0.4 },
+                        { label: 'Income', data: incomeData, borderColor: '#22c55e', backgroundColor: incGrad, fill: true, tension: 0.4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function buildChartLogic() {
+            // Basic logic to generate 7 labels and data points for 'week' or similar for others
+            const today = new Date();
+            const labels = [];
+            const expenseData = Array(7).fill(0);
+            const incomeData = Array(7).fill(0);
+            
+            for(let i=6; i>=0; i--) {
+                const d = new Date(); d.setDate(today.getDate() - i);
+                const key = d.toISOString().slice(0,10);
+                labels.push(d.toLocaleDateString(undefined, {weekday:'short'}));
+                allTransactions.forEach(t => {
+                    if(t.date === key) {
+                        if(t.t_type === 'Expense') expenseData[6-i] += t.amount;
+                        else incomeData[6-i] += t.amount;
+                    }
+                });
+            }
+            return { labels, expenseData, incomeData };
+        }
+        {% endraw %}
+    </script>
 </body>
-</html>
