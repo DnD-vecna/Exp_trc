@@ -6,66 +6,32 @@
     <title>Modern Expense Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         {% raw %}
         body {
-            background-image: url('https://wallpapers.com/woods-aesthetic');
+            background-image: url('https://wallpapercave.com/wp/wp9817310.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
             background-repeat: no-repeat;
         }
-
         .glass-dark {
             background: rgba(15, 23, 42, 0.65);
             backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
-
         .glass-light {
             background: rgba(255, 255, 255, 0.75);
             backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
         }
-
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(15px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
-
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .float { animation: float 6s ease-in-out infinite; }
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.5); border-radius: 10px; }
-
-        .toggle-btn {
-            padding: 5px 14px;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1.5px solid transparent;
-            background: rgba(255,255,255,0.3);
-            color: #4b5563;
-        }
-        .toggle-btn.active {
-            background: rgba(37, 99, 235, 0.15);
-            color: #1d4ed8;
-            border-color: rgba(59,130,246,0.5);
-        }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+        .toggle-btn { padding: 5px 14px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; border: 1.5px solid transparent; background: rgba(255,255,255,0.3); color: #4b5563; }
+        .toggle-btn.active { background: rgba(37, 99, 235, 0.15); color: #1d4ed8; border-color: rgba(59,130,246,0.5); }
         {% endraw %}
     </style>
 </head>
@@ -73,21 +39,15 @@
 
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
 
-    <div id="login-section" class="min-h-screen flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300">
+    <div id="login-section" class="min-h-screen flex items-center justify-center bg-black/40 backdrop-blur-sm">
         <div class="glass-dark p-8 rounded-2xl w-96 text-center float">
             <h1 class="text-3xl font-bold mb-6 text-white tracking-wide">Expense Tracker</h1>
-            
-            <div id="auth-inputs" class="space-y-4">
+            <div class="space-y-4">
                 <input type="email" id="email-input" placeholder="Email Address" class="w-full px-4 py-3 bg-white/10 border border-white/20 text-white placeholder-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 font-semibold">
                 <input type="password" id="pass-input" placeholder="Password" class="w-full px-4 py-3 bg-white/10 border border-white/20 text-white placeholder-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 font-semibold">
-                
-                <button id="auth-btn" onclick="handleAuth()" class="w-full bg-blue-500 hover:bg-blue-400 text-white py-3 rounded-xl transition-all duration-300 transform hover:scale-[1.02] font-bold shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-                    Access Dashboard
-                </button>
-
+                <button id="auth-btn" onclick="handleAuth()" class="w-full bg-blue-500 hover:bg-blue-400 text-white py-3 rounded-xl font-bold shadow-lg">Access Dashboard</button>
                 <p class="text-gray-300 text-xs mt-4">
-                    Don't have an account? 
-                    <button onclick="toggleAuthMode()" id="toggle-auth-text" class="text-blue-400 font-bold hover:underline">Sign Up</button>
+                    New user? <button onclick="toggleAuthMode()" id="toggle-auth-text" class="text-blue-400 font-bold hover:underline">Sign Up</button>
                 </p>
             </div>
         </div>
@@ -96,11 +56,10 @@
     <div id="dashboard-section" class="hidden min-h-screen fade-in pb-10">
         <div class="max-w-7xl mx-auto pt-6 px-6">
             <nav class="glass-light px-6 py-4 flex justify-between items-center rounded-2xl">
-                <h1 class="text-xl font-extrabold text-gray-800 tracking-tight">Expense Dashboard</h1>
-                <div class="flex items-center gap-4 border border-white/60 bg-white/40 shadow-sm px-4 py-1.5 rounded-full backdrop-blur-sm">
+                <h1 class="text-xl font-extrabold text-gray-800">Dashboard</h1>
+                <div class="flex items-center gap-4 bg-white/40 px-4 py-1.5 rounded-full backdrop-blur-sm">
                     <span id="user-email-display" class="text-sm text-blue-600 font-bold"></span>
-                    <span class="text-gray-400">|</span>
-                    <button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 font-bold transition-colors">Logout</button>
+                    <button onclick="logout()" class="text-sm text-red-500 font-bold">Logout</button>
                 </div>
             </nav>
         </div>
@@ -108,25 +67,23 @@
         <div class="max-w-7xl mx-auto px-6 pt-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="space-y-6 lg:col-span-1">
                 <div class="glass-light rounded-2xl p-6">
-                    <h2 class="text-lg font-bold mb-4 border-b border-gray-300/50 pb-2">Monthly Summary</h2>
+                    <h2 class="text-lg font-bold mb-4 border-b pb-2">Monthly Summary</h2>
                     <div class="grid grid-cols-2 gap-4 text-center mb-4">
-                        <div class="bg-white/50 rounded-xl p-3 border"><p class="text-xs text-green-600 uppercase font-bold">Income</p><p id="sum-income" class="text-xl font-bold text-green-700">0.00</p></div>
-                        <div class="bg-white/50 rounded-xl p-3 border"><p class="text-xs text-red-500 uppercase font-bold">Spent</p><p id="sum-expense" class="text-xl font-bold text-red-600">0.00</p></div>
+                        <div class="bg-white/50 rounded-xl p-3 border"><p class="text-xs text-green-600 font-bold">INCOME</p><p id="sum-income" class="text-xl font-bold text-green-700">0.00</p></div>
+                        <div class="bg-white/50 rounded-xl p-3 border"><p class="text-xs text-red-500 font-bold">SPENT</p><p id="sum-expense" class="text-xl font-bold text-red-600">0.00</p></div>
                     </div>
                     <div class="bg-blue-50/60 rounded-xl p-4 border border-blue-200 text-center">
-                        <p class="text-xs text-blue-600 uppercase font-bold">Net Balance</p>
                         <p id="sum-balance" class="text-3xl font-extrabold text-blue-700">0.00</p>
                     </div>
                 </div>
-
                 <div class="glass-light rounded-2xl p-6">
-                    <h2 class="text-lg font-bold mb-4 border-b border-gray-300/50 pb-2">Add New Entry</h2>
+                    <h2 class="text-lg font-bold mb-4 border-b pb-2">Add Entry</h2>
                     <form onsubmit="addTransaction(event)" class="space-y-4">
-                        <select id="t-type" class="w-full p-2.5 bg-white/60 border border-white/50 rounded-xl outline-none"><option value="Expense">Expense</option><option value="Income">Income</option></select>
-                        <input type="text" id="t-cat" required placeholder="Category" class="w-full p-2.5 bg-white/60 border border-white/50 rounded-xl outline-none">
-                        <input type="number" id="t-amt" required step="0.01" placeholder="Amount (Rs)" class="w-full p-2.5 bg-white/60 border border-white/50 rounded-xl outline-none">
-                        <input type="date" id="t-date" required class="w-full p-2.5 bg-white/60 border border-white/50 rounded-xl outline-none">
-                        <button type="submit" class="w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black transition-all">Save Transaction</button>
+                        <select id="t-type" class="w-full p-2.5 bg-white/60 border rounded-xl outline-none"><option value="Expense">Expense</option><option value="Income">Income</option></select>
+                        <input type="text" id="t-cat" required placeholder="Category" class="w-full p-2.5 bg-white/60 border rounded-xl outline-none">
+                        <input type="number" id="t-amt" required step="0.01" placeholder="Amount" class="w-full p-2.5 bg-white/60 border rounded-xl outline-none">
+                        <input type="date" id="t-date" required class="w-full p-2.5 bg-white/60 border rounded-xl outline-none">
+                        <button type="submit" class="w-full bg-gray-900 text-white font-bold py-3 rounded-xl">Save</button>
                     </form>
                 </div>
             </div>
@@ -134,57 +91,37 @@
             <div class="lg:col-span-2 space-y-8">
                 <div class="glass-light rounded-2xl p-6 flex flex-col h-[420px]">
                     <div class="flex justify-between items-center mb-4 border-b pb-3">
-                        <h2 class="text-lg font-bold">Transaction History</h2>
-                        <button onclick="clearTransactions()" class="text-xs font-bold text-red-600 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-500 hover:text-white transition-all">Delete All</button>
+                        <h2 class="text-lg font-bold">History</h2>
+                        <button onclick="clearTransactions()" class="text-xs text-red-600 font-bold">Clear All</button>
                     </div>
-                    <div class="overflow-y-auto flex-grow rounded-xl pr-2">
+                    <div class="overflow-y-auto pr-2">
                         <table class="min-w-full text-left">
-                            <thead class="sticky top-0 bg-white/80 backdrop-blur-md">
-                                <tr class="text-xs uppercase text-gray-600 font-bold border-b">
-                                    <th class="py-3 px-4">Date</th><th>Type</th><th>Category</th><th class="text-right px-4">Amount</th>
-                                </tr>
-                            </thead>
                             <tbody id="transaction-table" class="text-sm"></tbody>
                         </table>
                     </div>
                 </div>
-
                 <div class="glass-light rounded-2xl p-6">
-                    <div class="flex justify-between items-center mb-5 border-b pb-3">
-                        <h2 class="text-lg font-bold">Spending Analytics</h2>
-                        <div class="flex gap-1.5 bg-white/40 border rounded-xl p-1">
-                            <button id="toggle-week" class="toggle-btn active" onclick="setChartRange('week')">Week</button>
-                            <button id="toggle-month" class="toggle-btn" onclick="setChartRange('month')">Month</button>
-                            <button id="toggle-year" class="toggle-btn" onclick="setChartRange('year')">Year</button>
-                        </div>
-                    </div>
-                    <div id="chart-container" style="height:260px;"><canvas id="spendingChart"></canvas></div>
+                    <canvas id="spendingChart" style="height:260px;"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        // --- 2. PASTE YOUR CREDENTIALS HERE ---
+        const SUPABASE_URL = "https://pvsegoyevnivyfllqmuv.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE";
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         const API_URL = "/api"; 
-        {% raw %}
         let authToken = localStorage.getItem("expense_token");
-        let allTransactions = [];
-        let chartRange = 'week';
-        let spendingChart = null;
         let isSignUp = false;
+        let spendingChart = null;
 
         window.onload = () => { 
             document.getElementById('t-date').valueAsDate = new Date();
             if (authToken) showDashboard(); 
         };
-
-        function showToast(message) {
-            const toast = document.createElement("div");
-            toast.className = `bg-gray-800 text-white px-6 py-3 rounded shadow-lg font-bold fade-in`;
-            toast.innerText = message;
-            document.getElementById("toast-container").appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
 
         function toggleAuthMode() {
             isSignUp = !isSignUp;
@@ -195,36 +132,24 @@
         async function handleAuth() {
             const email = document.getElementById('email-input').value.trim();
             const password = document.getElementById('pass-input').value.trim();
-            
-            if (!email || !password) return showToast("Enter credentials");
+            if (!email || !password) return alert("Enter credentials");
 
-            // Normally Supabase Auth happens via the Supabase Client Library in JS, 
-            // but for simplicity we will route it to your FastAPI login endpoint.
-            // Note: In a real Supabase app, you'd use the Supabase JS SDK here directly.
-            
-            // For now, let's use the local API if you've set up Auth there, 
-            // or use the Supabase SDK if you have it imported.
-            showToast("Authenticating...");
-            
-            // Logic to sign in/up via your Backend
-            // (Assuming you updated main.py with the Bearer Token logic)
-            // This is a placeholder - usually you'd call supabase.auth.signIn()
-            // But let's assume your FastAPI handles the token exchange.
-            
-            // REAL WORLD STEP: Use Supabase JS CDN if you want to do it purely frontend
-            // For this snippet, we assume you'll manually enter a token or get it from FastAPI.
-            
-            // SIMULATED AUTH FOR TESTING (Replace with actual FastAPI call if needed)
-            // For now, we save the email as the UID to show it works
-            localStorage.setItem("expense_token", "fake-jwt-token"); 
-            localStorage.setItem("user_email", email);
-            authToken = "fake-jwt-token";
-            showDashboard();
-        }
+            let result;
+            if (isSignUp) {
+                result = await _supabase.auth.signUp({ email, password });
+            } else {
+                result = await _supabase.auth.signInWithPassword({ email, password });
+            }
 
-        function logout() { 
-            localStorage.clear(); 
-            location.reload(); 
+            if (result.error) {
+                alert(result.error.message);
+            } else {
+                const session = result.data.session;
+                localStorage.setItem("expense_token", session.access_token);
+                localStorage.setItem("user_email", result.data.user.email);
+                authToken = session.access_token;
+                showDashboard();
+            }
         }
 
         function showDashboard() {
@@ -235,29 +160,25 @@
         }
 
         async function loadData() {
-            try {
-                const headers = { "Authorization": `Bearer ${authToken}` };
-                const res = await fetch(`${API_URL}/transactions`, { headers });
-                allTransactions = await res.json();
-                
-                const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers });
-                const s = await sumRes.json();
-                
-                document.getElementById('sum-income').innerText = s.total_income.toFixed(2);
-                document.getElementById('sum-expense').innerText = s.total_spent.toFixed(2);
-                document.getElementById('sum-balance').innerText = s.balance.toFixed(2);
+            const headers = { "Authorization": `Bearer ${authToken}` };
+            const res = await fetch(`${API_URL}/transactions`, { headers });
+            const allTransactions = await res.json();
+            
+            const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers });
+            const s = await sumRes.json();
+            
+            document.getElementById('sum-income').innerText = s.total_income.toFixed(2);
+            document.getElementById('sum-expense').innerText = s.total_spent.toFixed(2);
+            document.getElementById('sum-balance').innerText = s.balance.toFixed(2);
 
-                const tbody = document.getElementById('transaction-table');
-                tbody.innerHTML = allTransactions.length ? allTransactions.map(t => `
-                    <tr class="border-b border-gray-200/60 hover:bg-white/50 transition-colors">
-                        <td class="py-3 px-4 text-gray-600 font-medium">${t.date}</td>
-                        <td class="py-3"><span class="px-2 py-1 rounded-md text-xs font-bold ${t.t_type === 'Income' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-800'}">${t.t_type}</span></td>
-                        <td class="py-3 font-semibold">${t.category}</td>
-                        <td class="py-3 text-right font-black px-4 ${t.t_type === 'Income' ? 'text-green-600' : 'text-gray-900'}">${t.amount.toFixed(2)}</td>
-                    </tr>
-                `).join('') : '<tr><td colspan="4" class="py-10 text-center italic text-gray-400">No data found.</td></tr>';
-                renderChart();
-            } catch (e) { console.error(e); }
+            document.getElementById('transaction-table').innerHTML = allTransactions.map(t => `
+                <tr class="border-b">
+                    <td class="py-3 px-4">${t.date}</td>
+                    <td class="py-3 font-bold">${t.category}</td>
+                    <td class="py-3 text-right font-black ${t.t_type === 'Income' ? 'text-green-600' : 'text-gray-900'}">${t.amount.toFixed(2)}</td>
+                </tr>
+            `).join('');
+            renderChart(allTransactions);
         }
 
         async function addTransaction(e) {
@@ -270,81 +191,31 @@
             };
             const res = await fetch(`${API_URL}/transactions`, {
                 method: "POST",
-                headers: { 
-                    "Content-Type": "application/json", 
-                    "Authorization": `Bearer ${authToken}` 
-                },
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken}` },
                 body: JSON.stringify(payload)
             });
-            if (res.ok) { 
-                document.getElementById('t-cat').value = ''; 
-                document.getElementById('t-amt').value = ''; 
-                loadData(); 
-                showToast("Entry Saved!"); 
-            }
+            if (res.ok) { loadData(); e.target.reset(); document.getElementById('t-date').valueAsDate = new Date(); }
         }
 
-        async function clearTransactions() {
-            if (!confirm("Delete all data?")) return;
-            await fetch(`${API_URL}/transactions`, { 
-                method: "DELETE", 
-                headers: { "Authorization": `Bearer ${authToken}` } 
-            });
-            loadData();
-        }
+        function logout() { localStorage.clear(); location.reload(); }
 
-        function setChartRange(r) { 
-            chartRange = r; 
-            ['week', 'month', 'year'].forEach(btn => document.getElementById(`toggle-${btn}`).classList.toggle('active', btn === r));
-            renderChart(); 
-        }
-
-        function renderChart() {
-            const canvas = document.getElementById('spendingChart');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const { labels, expenseData, incomeData } = buildChartLogic();
-            
+        function renderChart(data) {
+            const ctx = document.getElementById('spendingChart').getContext('2d');
             if (spendingChart) spendingChart.destroy();
-            
-            const expGrad = ctx.createLinearGradient(0, 0, 0, 260);
-            expGrad.addColorStop(0, 'rgba(239,68,68,0.3)'); expGrad.addColorStop(1, 'rgba(239,68,68,0)');
-            const incGrad = ctx.createLinearGradient(0, 0, 0, 260);
-            incGrad.addColorStop(0, 'rgba(34,197,94,0.3)'); incGrad.addColorStop(1, 'rgba(34,197,94,0)');
-
             spendingChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels,
-                    datasets: [
-                        { label: 'Expenses', data: expenseData, borderColor: '#ef4444', backgroundColor: expGrad, fill: true, tension: 0.4 },
-                        { label: 'Income', data: incomeData, borderColor: '#22c55e', backgroundColor: incGrad, fill: true, tension: 0.4 }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                    labels: data.slice(0,7).map(t => t.date),
+                    datasets: [{ label: 'Amount', data: data.slice(0,7).map(t => t.amount), borderColor: '#3b82f6', tension: 0.4 }]
+                }
             });
         }
 
-        function buildChartLogic() {
-            const today = new Date();
-            const labels = [];
-            const expenseData = Array(7).fill(0);
-            const incomeData = Array(7).fill(0);
-            
-            for(let i=6; i>=0; i--) {
-                const d = new Date(); d.setDate(today.getDate() - i);
-                const key = d.toISOString().slice(0,10);
-                labels.push(d.toLocaleDateString(undefined, {weekday:'short'}));
-                allTransactions.forEach(t => {
-                    if(t.date === key) {
-                        if(t.t_type === 'Expense') expenseData[6-i] += t.amount;
-                        else incomeData[6-i] += t.amount;
-                    }
-                });
-            }
-            return { labels, expenseData, incomeData };
+        async function clearTransactions() {
+            if (!confirm("Clear all?")) return;
+            await fetch(`${API_URL}/transactions`, { method: "DELETE", headers: { "Authorization": `Bearer ${authToken}` } });
+            loadData();
         }
-        {% endraw %}
     </script>
 </body>
 </html>
