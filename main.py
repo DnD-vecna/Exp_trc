@@ -75,10 +75,10 @@ async def home(request: Request):
     )
 
 # ADD TRANSACTION
-@app.post("/api/transactions") # Removed response_model temporarily to debug
+@app.post("/api/transactions")
 async def add_transaction(transaction: TransactionCreate, user=Depends(get_current_user)):
     try:
-        # We manually build the dict to ensure NO hidden 'id' or 'None' values are sent
+        # 1. Prepare data - ensuring user.id is a clean string for the UUID column
         payload = {
             "user_id": str(user.id),
             "date": str(transaction.date or datetime.date.today()),
@@ -87,19 +87,18 @@ async def add_transaction(transaction: TransactionCreate, user=Depends(get_curre
             "amount": float(transaction.amount)
         }
         
-        print(f"DEBUG: Sending to Supabase -> {payload}")
-        
+        # 2. Insert into Supabase
         res = supabase.table("transactions").insert(payload).execute()
         
-        if not res.data:
-            print(f"DEBUG: Supabase returned empty data: {res}")
-            raise HTTPException(status_code=400, detail="Insert failed - no data returned")
-            
-        return res.data[0]
+        # 3. Return the first row directly without strict model validation
+        if res.data:
+            return res.data[0]
+        
+        raise HTTPException(status_code=400, detail="Database returned no data")
 
     except Exception as e:
-        print(f"CRITICAL DATABASE ERROR: {str(e)}")
-        # This sends the ACTUAL error message to your browser console
+        # This will send the EXACT error message to your browser console
+        print(f"DEBUG ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # GET TRANSACTIONS
