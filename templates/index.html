@@ -140,23 +140,18 @@
 </div>
 
 <script>
-// Logic to ensure the API_URL always points to your backend correctly
-// This tells the frontend: "Look for the API on the same server I am on"
-const API_URL = window.location.origin + "/api";
-
 const SUPABASE_URL = "https://pvsegoyevnivyfllqmuv.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const API_URL = "/api";
 let authToken = localStorage.getItem("expense_token");
 let isSignUp = false;
 let spendingChart = null;
 
 window.onload = () => {
     document.getElementById('t-date').valueAsDate = new Date();
-    if (authToken) {
-        showDashboard();
-    }
+    if (authToken) showDashboard();
 };
 
 function toggleAuthMode() {
@@ -183,7 +178,7 @@ async function handleAuth() {
         } else {
             const session = result.data.session;
             if (!session) {
-                alert("Please check your email to confirm your account!");
+                alert("Check your email for a confirmation link!");
                 return;
             }
             localStorage.setItem("expense_token", session.access_token);
@@ -193,7 +188,7 @@ async function handleAuth() {
         }
     } catch (e) {
         console.error(e);
-        alert("Authentication failed. Please try again.");
+        alert("An unexpected error occurred.");
     }
 }
 
@@ -205,34 +200,27 @@ function showDashboard() {
 }
 
 async function loadData() {
-    if (!authToken) return;
-    const headers = { 
-        "Authorization": `Bearer ${authToken}`,
-        "Content-Type": "application/json"
-    };
-    
+    const headers = { "Authorization": `Bearer ${authToken}` };
     try {
-        const res = await fetch(`${API_URL}/transactions`, { headers });
+        const res = await fetch(`${API_URL}/transactions`, { headers: headers });
         const allTransactions = await res.json();
 
-        const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers });
+        const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers: headers });
         const s = await sumRes.json();
 
-        document.getElementById('sum-income').innerText = (s.total_income || 0).toFixed(2);
-        document.getElementById('sum-expense').innerText = (s.total_spent || 0).toFixed(2);
-        document.getElementById('sum-balance').innerText = (s.balance || 0).toFixed(2);
+        document.getElementById('sum-income').innerText = s.total_income.toFixed(2);
+        document.getElementById('sum-expense').innerText = s.total_spent.toFixed(2);
+        document.getElementById('sum-balance').innerText = s.balance.toFixed(2);
 
-        document.getElementById('transaction-table').innerHTML = (allTransactions || []).map(t => `
-            <tr class="border-b hover:bg-white/30 transition-colors">
-                <td class="py-3 px-4 text-gray-600 font-medium">${t.date}</td>
-                <td class="py-3 font-bold text-gray-800">${t.category}</td>
-                <td class="py-3 text-right font-black ${t.t_type === 'Income' ? 'text-green-600' : 'text-red-500'}">
-                    ${t.t_type === 'Income' ? '+' : '-'}${t.amount.toFixed(2)}
-                </td>
+        document.getElementById('transaction-table').innerHTML = allTransactions.map(t => `
+            <tr class="border-b">
+                <td class="py-3 px-4">${t.date}</td>
+                <td class="py-3 font-bold">${t.category}</td>
+                <td class="py-3 text-right font-black ${t.t_type === 'Income' ? 'text-green-600' : 'text-gray-900'}">${t.amount.toFixed(2)}</td>
             </tr>
         `).join('');
 
-        renderChart(allTransactions || []);
+        renderChart(allTransactions);
     } catch (e) {
         console.error("Data load error:", e);
     }
@@ -240,44 +228,28 @@ async function loadData() {
 
 async function addTransaction(e) {
     e.preventDefault();
-    
-    // Get the current user from Supabase to ensure we have the UID
-    const { data: { user } } = await _supabase.auth.getUser();
-    
-    if (!user) {
-        alert("Session expired. Please login again.");
-        logout();
-        return;
-    }
-
     const payload = {
         t_type: document.getElementById('t-type').value,
         category: document.getElementById('t-cat').value,
         amount: parseFloat(document.getElementById('t-amt').value),
-        date: document.getElementById('t-date').value,
-        user_id: user.id // Attached to pass RLS
+        date: document.getElementById('t-date').value
     };
 
-    try {
-        const res = await fetch(`${API_URL}/transactions`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${authToken}`
-            },
-            body: JSON.stringify(payload)
-        });
+    const res = await fetch(`${API_URL}/transactions`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`
+        },
+        body: JSON.stringify(payload)
+    });
 
-        if (res.ok) {
-            loadData();
-            e.target.reset();
-            document.getElementById('t-date').valueAsDate = new Date();
-        } else {
-            const errorData = await res.json();
-            alert(`Error: ${errorData.message || errorData.detail || "Failed to save"}`);
-        }
-    } catch (err) {
-        alert("Connection error. Check if your Render service is awake.");
+    if (res.ok) {
+        loadData();
+        e.target.reset();
+        document.getElementById('t-date').valueAsDate = new Date();
+    } else {
+        alert("Failed to save");
     }
 }
 
@@ -287,45 +259,29 @@ function logout() {
 }
 
 function renderChart(data) {
-    const canvas = document.getElementById('spendingChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = document.getElementById('spendingChart').getContext('2d');
     if (spendingChart) spendingChart.destroy();
-    
-    const chartData = [...data].reverse().slice(-7); 
-    
     spendingChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: chartData.map(t => t.date),
+            labels: data.slice(0,7).map(t => t.date),
             datasets: [{
-                label: 'Transaction Amount',
-                data: chartData.map(t => t.amount),
+                label: 'Amount',
+                data: data.slice(0,7).map(t => t.amount),
                 borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                fill: true,
                 tension: 0.4
             }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
         }
     });
 }
 
 async function clearTransactions() {
-    if (!confirm("Are you sure you want to delete all history?")) return;
-    try {
-        await fetch(`${API_URL}/transactions`, {
-            method: "DELETE",
-            headers: { "Authorization": `Bearer ${authToken}` }
-        });
-        loadData();
-    } catch (e) {
-        alert("Failed to clear transactions.");
-    }
+    if (!confirm("Clear all?")) return;
+    await fetch(`${API_URL}/transactions`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${authToken}` }
+    });
+    loadData();
 }
 </script>
 
