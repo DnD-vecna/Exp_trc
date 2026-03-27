@@ -11,8 +11,8 @@ from supabase import create_client, Client
 app = FastAPI(title = "Expense Tracker APII")
 templates = Jinja2Templates(directory="templates")
 
-SUPABASE_URL = os.getenv("https://pvsegoyevnivyfllqmuv.supabase.co")
-SUPABASE_KEY = os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE")
+SUPABASE_URL = "https://pvsegoyevnivyfllqmuv.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -37,23 +37,28 @@ app.add_middleware(
 )
 
 # ---------- AUTH ----------
+# ---------- AUTH ----------
 def get_current_user(authorization: str = Header(None)):
     if not authorization:
         raise HTTPException(status_code=401, detail="No Authorization header")
 
     try:
-        token = authorization.split(" ")[1]
+        # Expecting "Bearer <token>"
+        scheme, token = authorization.split()
+        if scheme.lower() != 'bearer':
+            raise HTTPException(status_code=401, detail="Invalid authentication scheme")
 
-        # 🔥 USER-SCOPED CLIENT
-        client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        client.auth.set_session(access_token=token, refresh_token=token)
+        # Use the GLOBAL client to get the user
+        # This validates the JWT with Supabase Auth
+        res = supabase.auth.get_user(token)
+        
+        if not res.user:
+            raise HTTPException(status_code=401, detail="Invalid user")
 
-        user = client.auth.get_user(token).user
-
-        return {"user": user, "client": client}
+        return res.user
 
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=401, detail=f"Auth error: {str(e)}")
 
 # ---------- ROUTES ----------
 @app.get("/", response_class=HTMLResponse)
@@ -83,11 +88,9 @@ def add_transaction(transaction: TransactionCreate, ctx=Depends(get_current_user
 
 # GET TRANSACTIONS
 @app.get("/api/transactions", response_model=List[TransactionOut])
-def get_transactions(ctx=Depends(get_current_user)):
-    user = ctx["user"]
-    client = ctx["client"]
-
-    res = client.table("transactions")\
+def get_transactions(user=Depends(get_current_user)):
+    # Use the global supabase client
+    res = supabase.table("transactions")\
         .select("*")\
         .eq("user_id", user.id)\
         .order("date", desc=True)\
