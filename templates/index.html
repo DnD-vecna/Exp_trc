@@ -151,7 +151,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const API_URL = "/api";
+const API_URL = "https://expense-trackerrr-f4nb.onrender.com/api";
 let authToken = localStorage.getItem("expense_token");
 let isSignUp = false;
 let spendingChart = null;
@@ -170,26 +170,43 @@ function toggleAuthMode() {
 async function handleAuth() {
     const email = document.getElementById('email-input').value.trim();
     const password = document.getElementById('pass-input').value.trim();
-    if (!email || !password) return alert("Enter credentials");
+    
+    if (!email || !password) return alert("Please enter both email and password");
 
     let result;
-    if (isSignUp) {
-        result = await _supabase.auth.signUp({ email, password });
-    } else {
-        result = await _supabase.auth.signInWithPassword({ email, password });
-    }
+    try {
+        if (isSignUp) {
+            // Adding 'await' here ensures the code waits for Supabase to respond
+            result = await _supabase.auth.signUp({ email, password });
+        } else {
+            // Adding 'await' here ensures the code waits for the login check
+            result = await _supabase.auth.signInWithPassword({ email, password });
+        }
 
-    if (result.error) {
-        alert(result.error.message);
-    } else {
-        const session = result.data.session;
-        localStorage.setItem("expense_token", session.access_token);
-        localStorage.setItem("user_email", result.data.user.email);
-        authToken = session.access_token;
-        showDashboard();
+        if (result.error) {
+            alert("Error: " + result.error.message);
+            console.error("Supabase Auth Error:", result.error);
+        } else {
+            const session = result.data.session;
+            
+            // If Supabase has 'Email Confirmation' ON, session will be null 
+            // until you click the link in your email.
+            if (!session) {
+                alert("Check your email for a confirmation link!");
+                return;
+            }
+
+            localStorage.setItem("expense_token", session.access_token);
+            localStorage.setItem("user_email", result.data.user.email);
+            authToken = session.access_token;
+            showDashboard();
+        }
+    } catch (err) {
+        // This catches network errors or code crashes
+        console.error("System Error:", err);
+        alert("Something went wrong. Check the browser console (F12).");
     }
 }
-
 function showDashboard() {
     document.getElementById('login-section').classList.add('hidden');
     document.getElementById('dashboard-section').classList.remove('hidden');
