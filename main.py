@@ -77,12 +77,13 @@ def add_transaction(transaction: TransactionCreate, user=Depends(get_current_use
 
     # We prepare the data, ensuring types match Supabase requirements
     data = {
-        "user_id": str(user.id),
+        # Using .id directly. Supabase-py handles the UUID conversion 
+        # as long as the string is a valid UUID format.
+        "user_id": user.id, 
         "date": str(transaction.date or datetime.date.today()),
         "t_type": transaction.t_type.capitalize(),
-        "category": str(transaction.category),
+        "category": transaction.category,
         "amount": float(transaction.amount)
-        # ❌ DO NOT include "id" here
     }
 
     try:
