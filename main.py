@@ -7,7 +7,10 @@ from typing import Optional
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-
+@app.get("/")
+async def serve_home():
+    return FileResponse("index.html")
+    
 # Initialize FastAPI
 app = FastAPI()
 
@@ -38,10 +41,6 @@ class Transaction(BaseModel):
     user_id: Optional[str] = None
 
 # --- ROUTES ---
-# Add this route to serve your index.html as the home page
-@app.get("/")
-async def serve_home():
-    return FileResponse("index.html")
     
 @app.get("/")
 def read_root():
