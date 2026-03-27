@@ -11,8 +11,8 @@ from supabase import create_client, Client
 app = FastAPI(title = "Expense Tracker APII")
 templates = Jinja2Templates(directory="templates")
 
-SUPABASE_URL = "https://pvsegoyevnivyfllqmuv.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -63,13 +63,16 @@ def get_current_user(authorization: str = Header(None)):
 # ---------- ROUTES ----------
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    # Change this line:
+    return templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={"request": request}
+    )
 
 # ADD TRANSACTION
 @app.post("/api/transactions", response_model=TransactionOut)
-def add_transaction(transaction: TransactionCreate, ctx=Depends(get_current_user)):
-    user = ctx["user"]
-    client = ctx["client"]
+def add_transaction(transaction: TransactionCreate, user=Depends(get_current_user)):
 
     data = {
         "user_id": user.id,
@@ -79,7 +82,7 @@ def add_transaction(transaction: TransactionCreate, ctx=Depends(get_current_user
         "amount": transaction.amount
     }
 
-    res = client.table("transactions").insert(data).execute()
+    res = supabase.table("transactions").insert(data).execute()
 
     if not res.data:
         raise HTTPException(status_code=400, detail="Insert failed")
@@ -100,14 +103,12 @@ def get_transactions(user=Depends(get_current_user)):
 
 # SUMMARY
 @app.get("/api/transactions/summary")
-def summary(ctx=Depends(get_current_user)):
-    user = ctx["user"]
-    client = ctx["client"]
+def summary(user=Depends(get_current_user)):
 
     today = datetime.date.today()
     first_day = today.replace(day=1).isoformat()
 
-    res = client.table("transactions")\
+    res = supabase.table("transactions")\
         .select("*")\
         .eq("user_id", user.id)\
         .gte("date", first_day)\
@@ -126,10 +127,8 @@ def summary(ctx=Depends(get_current_user)):
 
 # DELETE
 @app.delete("/api/transactions")
-def delete_all(ctx=Depends(get_current_user)):
-    user = ctx["user"]
-    client = ctx["client"]
+def delete_all(user=Depends(get_current_user)):
 
-    client.table("transactions").delete().eq("user_id", user.id).execute()
+    supabase.table("transactions").delete().eq("user_id", user.id).execute()
 
     return {"message": "Deleted"}
