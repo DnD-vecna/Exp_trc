@@ -23,9 +23,13 @@ class TransactionCreate(BaseModel):
     category: str
     amount: float
 
-class TransactionOut(TransactionCreate):
-    id: int
-    user_id: str
+class TransactionOut(BaseModel):
+    id: Optional[int] = None
+    user_id: Optional[str] = None
+    date: Optional[datetime.date] = None
+    t_type: Optional[str] = None
+    category: Optional[str] = None
+    amount: Optional[float] = None
 
 # ---------- CORS ----------
 app.add_middleware(
@@ -71,24 +75,32 @@ async def home(request: Request):
     )
 
 # ADD TRANSACTION
-@app.post("/api/transactions", response_model=TransactionOut)
-def add_transaction(transaction: TransactionCreate, user=Depends(get_current_user)):
-    # Prepare data precisely
-    data = {
-        "user_id": user.id, # No str() needed if it's already a string/UUID
-        "date": str(transaction.date or datetime.date.today()),
-        "t_type": transaction.t_type.capitalize(),
-        "category": transaction.category,
-        "amount": float(transaction.amount)
-    }
-
+@app.post("/api/transactions") # Removed response_model temporarily to debug
+async def add_transaction(transaction: TransactionCreate, user=Depends(get_current_user)):
     try:
-        # Explicitly use the supabase client
-        res = supabase.table("transactions").insert(data).execute()
+        # We manually build the dict to ensure NO hidden 'id' or 'None' values are sent
+        payload = {
+            "user_id": str(user.id),
+            "date": str(transaction.date or datetime.date.today()),
+            "t_type": transaction.t_type.capitalize(),
+            "category": transaction.category,
+            "amount": float(transaction.amount)
+        }
+        
+        print(f"DEBUG: Sending to Supabase -> {payload}")
+        
+        res = supabase.table("transactions").insert(payload).execute()
+        
+        if not res.data:
+            print(f"DEBUG: Supabase returned empty data: {res}")
+            raise HTTPException(status_code=400, detail="Insert failed - no data returned")
+            
         return res.data[0]
+
     except Exception as e:
-        print(f"DATABASE ERROR: {e}")
-        raise HTTPException(status_code=500, detail="Database insert failed")
+        print(f"CRITICAL DATABASE ERROR: {str(e)}")
+        # This sends the ACTUAL error message to your browser console
+        raise HTTPException(status_code=500, detail=str(e))
 
 # GET TRANSACTIONS
 @app.get("/api/transactions", response_model=List[TransactionOut])
