@@ -4,6 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from pydantic import BaseModel
 from typing import Optional
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
 
 # Initialize FastAPI
 app = FastAPI()
@@ -35,7 +38,11 @@ class Transaction(BaseModel):
     user_id: Optional[str] = None
 
 # --- ROUTES ---
-
+# Add this route to serve your index.html as the home page
+@app.get("/")
+async def serve_home():
+    return FileResponse("index.html")
+    
 @app.get("/")
 def read_root():
     return {"status": "Backend is running"}
