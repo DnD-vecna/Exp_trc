@@ -141,7 +141,8 @@
 
 <script>
 // Logic to ensure the API_URL always points to your backend correctly
-const API_URL = "https://expense-trackerrr-f4nb.onrender.com/api";
+// This tells the frontend: "Look for the API on the same server I am on"
+const API_URL = window.location.origin + "/api";
 
 const SUPABASE_URL = "https://pvsegoyevnivyfllqmuv.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE";
