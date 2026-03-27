@@ -202,10 +202,10 @@ function showDashboard() {
 async function loadData() {
     const headers = { "Authorization": `Bearer ${authToken}` };
     try {
-        const res = await fetch(`${API_URL}/transactions`, { headers });
+        const res = await fetch(`${API_URL}/transactions`, { headers: headers });
         const allTransactions = await res.json();
 
-        const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers });
+        const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers: headers });
         const s = await sumRes.json();
 
         document.getElementById('sum-income').innerText = s.total_income.toFixed(2);
