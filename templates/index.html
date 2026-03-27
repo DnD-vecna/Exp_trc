@@ -140,8 +140,15 @@
 </div>
 
 <script>
-const SUPABASE_URL = "https://pvsegoyevnivyfllqmuv.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE";
+# Use the EXACT keys you defined in the Render Environment tab
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+
+# Add a small check to help you debug if they are missing
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("❌ ERROR: Supabase environment variables are missing!")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const API_URL = "/api";
