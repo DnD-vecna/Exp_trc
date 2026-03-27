@@ -77,27 +77,30 @@ async def home(request: Request):
     )
 
 # ADD TRANSACTION
-@app.post("/api/transactions")
-async def add_transaction(transaction: TransactionCreate, user=Depends(get_current_user)):
-    try:
-        payload = {
-            "user_id": user.id,
-            "date": str(transaction.date or datetime.date.today()),
-            "t_type": transaction.t_type.capitalize(),
-            "category": transaction.category,
-            "amount": float(transaction.amount)
-        }
-        
-        res = supabase.table("transactions").insert(payload).execute()
-        
-        if res.data:
-            return res.data[0]
-        
-        raise HTTPException(status_code=400, detail="Database rejected the insert.")
+@app.post("/add-transaction")
+async def add_transaction(amount: float, category: str, t_type: str):
+    # 1. Get the authenticated user's ID
+    user_res = supabase.auth.get_user()
+    if not user_res.user:
+        return {"error": "Unauthorized"}
+    
+    uid = user_res.user.id
 
+    # 2. Prepare the data payload including the user_id
+    new_transaction = {
+        "user_id": uid, # This matches the column in your screenshot
+        "amount": amount,
+        "category": category,
+        "t_type": t_type,
+        "date": "2026-03-27" # Or use datetime.now()
+    }
+
+    # 3. Execute the insert
+    try:
+        result = supabase.table("transactions").insert(new_transaction).execute()
+        return result
     except Exception as e:
-        print(f"DEBUG ADD ERROR: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"error": str(e)}
 
 # GET TRANSACTIONS
 @app.get("/api/transactions", response_model=List[TransactionOut])
