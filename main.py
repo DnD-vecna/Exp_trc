@@ -71,23 +71,32 @@ async def home(request: Request):
     )
 
 # ADD TRANSACTION
+# ADD TRANSACTION
 @app.post("/api/transactions", response_model=TransactionOut)
 def add_transaction(transaction: TransactionCreate, user=Depends(get_current_user)):
 
+    # We prepare the data, ensuring types match Supabase requirements
     data = {
-        "user_id": user.id,
+        "user_id": str(user.id),  # Ensure it's a string that Supabase can cast to UUID
         "date": str(transaction.date or datetime.date.today()),
         "t_type": transaction.t_type.capitalize(),
-        "category": transaction.category,
-        "amount": transaction.amount
+        "category": str(transaction.category),
+        "amount": float(transaction.amount)
     }
 
-    res = supabase.table("transactions").insert(data).execute()
+    try:
+        # We execute the insert
+        res = supabase.table("transactions").insert(data).execute()
+        
+        if not res.data:
+            raise HTTPException(status_code=400, detail="Insert returned no data")
+            
+        return res.data[0]
 
-    if not res.data:
-        raise HTTPException(status_code=400, detail="Insert failed")
-
-    return res.data[0]
+    except Exception as e:
+        # This will show the REAL error in your Render Logs
+        print(f"DEBUG ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # GET TRANSACTIONS
 @app.get("/api/transactions", response_model=List[TransactionOut])
