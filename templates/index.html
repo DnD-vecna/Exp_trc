@@ -140,18 +140,24 @@
 </div>
 
 <script>
+// Replace this with your actual Render backend URL (e.g., https://expense-tracker.onrender.com)
+const API_URL = window.location.origin === "http://127.0.0.1:5500" 
+    ? "https://expense-trackerrr-f4nb.onrender.com/api" 
+    : "/api";
+
 const SUPABASE_URL = "https://pvsegoyevnivyfllqmuv.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const API_URL = "/api";
 let authToken = localStorage.getItem("expense_token");
 let isSignUp = false;
 let spendingChart = null;
 
 window.onload = () => {
     document.getElementById('t-date').valueAsDate = new Date();
-    if (authToken) showDashboard();
+    if (authToken) {
+        showDashboard();
+    }
 };
 
 function toggleAuthMode() {
@@ -178,7 +184,7 @@ async function handleAuth() {
         } else {
             const session = result.data.session;
             if (!session) {
-                alert("Check your email for a confirmation link!");
+                alert("Please check your email to confirm your account!");
                 return;
             }
             localStorage.setItem("expense_token", session.access_token);
@@ -188,7 +194,7 @@ async function handleAuth() {
         }
     } catch (e) {
         console.error(e);
-        alert("An unexpected error occurred.");
+        alert("Authentication failed. Please try again.");
     }
 }
 
@@ -200,23 +206,27 @@ function showDashboard() {
 }
 
 async function loadData() {
+    if (!authToken) return;
     const headers = { "Authorization": `Bearer ${authToken}` };
+    
     try {
-        const res = await fetch(`${API_URL}/transactions`, { headers: headers });
+        const res = await fetch(`${API_URL}/transactions`, { headers });
         const allTransactions = await res.json();
 
-        const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers: headers });
+        const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers });
         const s = await sumRes.json();
 
-        document.getElementById('sum-income').innerText = s.total_income.toFixed(2);
-        document.getElementById('sum-expense').innerText = s.total_spent.toFixed(2);
-        document.getElementById('sum-balance').innerText = s.balance.toFixed(2);
+        document.getElementById('sum-income').innerText = (s.total_income || 0).toFixed(2);
+        document.getElementById('sum-expense').innerText = (s.total_spent || 0).toFixed(2);
+        document.getElementById('sum-balance').innerText = (s.balance || 0).toFixed(2);
 
         document.getElementById('transaction-table').innerHTML = allTransactions.map(t => `
-            <tr class="border-b">
-                <td class="py-3 px-4">${t.date}</td>
-                <td class="py-3 font-bold">${t.category}</td>
-                <td class="py-3 text-right font-black ${t.t_type === 'Income' ? 'text-green-600' : 'text-gray-900'}">${t.amount.toFixed(2)}</td>
+            <tr class="border-b hover:bg-white/30 transition-colors">
+                <td class="py-3 px-4 text-gray-600 font-medium">${t.date}</td>
+                <td class="py-3 font-bold text-gray-800">${t.category}</td>
+                <td class="py-3 text-right font-black ${t.t_type === 'Income' ? 'text-green-600' : 'text-red-500'}">
+                    ${t.t_type === 'Income' ? '+' : '-'}${t.amount.toFixed(2)}
+                </td>
             </tr>
         `).join('');
 
@@ -235,21 +245,26 @@ async function addTransaction(e) {
         date: document.getElementById('t-date').value
     };
 
-    const res = await fetch(`${API_URL}/transactions`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${authToken}`
-        },
-        body: JSON.stringify(payload)
-    });
+    try {
+        const res = await fetch(`${API_URL}/transactions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${authToken}`
+            },
+            body: JSON.stringify(payload)
+        });
 
-    if (res.ok) {
-        loadData();
-        e.target.reset();
-        document.getElementById('t-date').valueAsDate = new Date();
-    } else {
-        alert("Failed to save");
+        if (res.ok) {
+            loadData();
+            e.target.reset();
+            document.getElementById('t-date').valueAsDate = new Date();
+        } else {
+            const errorData = await res.json();
+            alert(`Error: ${errorData.detail || "Failed to save"}`);
+        }
+    } catch (err) {
+        alert("Connection error. Is the backend running?");
     }
 }
 
@@ -261,22 +276,32 @@ function logout() {
 function renderChart(data) {
     const ctx = document.getElementById('spendingChart').getContext('2d');
     if (spendingChart) spendingChart.destroy();
+    
+    const chartData = [...data].reverse().slice(-7); // Last 7 entries
+    
     spendingChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: data.slice(0,7).map(t => t.date),
+            labels: chartData.map(t => t.date),
             datasets: [{
-                label: 'Amount',
-                data: data.slice(0,7).map(t => t.amount),
+                label: 'Transaction Amount',
+                data: chartData.map(t => t.amount),
                 borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
                 tension: 0.4
             }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
         }
     });
 }
 
 async function clearTransactions() {
-    if (!confirm("Clear all?")) return;
+    if (!confirm("Are you sure you want to delete all history?")) return;
     await fetch(`${API_URL}/transactions`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${authToken}` }
