@@ -140,18 +140,11 @@
 </div>
 
 <script>
-# Use the EXACT keys you defined in the Render Environment tab
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
-
-# Add a small check to help you debug if they are missing
-if not SUPABASE_URL or not SUPABASE_KEY:
-    print("❌ ERROR: Supabase environment variables are missing!")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+const SUPABASE_URL = "https://pvsegoyevnivyfllqmuv.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const API_URL = "https://expense-trackerrr-f4nb.onrender.com/api";
+const API_URL = "/api";
 let authToken = localStorage.getItem("expense_token");
 let isSignUp = false;
 let spendingChart = null;
@@ -170,43 +163,35 @@ function toggleAuthMode() {
 async function handleAuth() {
     const email = document.getElementById('email-input').value.trim();
     const password = document.getElementById('pass-input').value.trim();
-    
-    if (!email || !password) return alert("Please enter both email and password");
+    if (!email || !password) return alert("Enter credentials");
 
-    let result;
     try {
+        let result;
         if (isSignUp) {
-            // Adding 'await' here ensures the code waits for Supabase to respond
             result = await _supabase.auth.signUp({ email, password });
         } else {
-            // Adding 'await' here ensures the code waits for the login check
             result = await _supabase.auth.signInWithPassword({ email, password });
         }
 
         if (result.error) {
-            alert("Error: " + result.error.message);
-            console.error("Supabase Auth Error:", result.error);
+            alert(result.error.message);
         } else {
             const session = result.data.session;
-            
-            // If Supabase has 'Email Confirmation' ON, session will be null 
-            // until you click the link in your email.
             if (!session) {
                 alert("Check your email for a confirmation link!");
                 return;
             }
-
             localStorage.setItem("expense_token", session.access_token);
             localStorage.setItem("user_email", result.data.user.email);
             authToken = session.access_token;
             showDashboard();
         }
-    } catch (err) {
-        // This catches network errors or code crashes
-        console.error("System Error:", err);
-        alert("Something went wrong. Check the browser console (F12).");
+    } catch (e) {
+        console.error(e);
+        alert("An unexpected error occurred.");
     }
 }
+
 function showDashboard() {
     document.getElementById('login-section').classList.add('hidden');
     document.getElementById('dashboard-section').classList.remove('hidden');
@@ -216,32 +201,33 @@ function showDashboard() {
 
 async function loadData() {
     const headers = { "Authorization": `Bearer ${authToken}` };
+    try {
+        const res = await fetch(`${API_URL}/transactions`, { headers });
+        const allTransactions = await res.json();
 
-    const res = await fetch(`${API_URL}/transactions`, { headers });
-    const allTransactions = await res.json();
+        const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers });
+        const s = await sumRes.json();
 
-    const sumRes = await fetch(`${API_URL}/transactions/summary`, { headers });
-    const s = await sumRes.json();
+        document.getElementById('sum-income').innerText = s.total_income.toFixed(2);
+        document.getElementById('sum-expense').innerText = s.total_spent.toFixed(2);
+        document.getElementById('sum-balance').innerText = s.balance.toFixed(2);
 
-    document.getElementById('sum-income').innerText = s.total_income.toFixed(2);
-    document.getElementById('sum-expense').innerText = s.total_spent.toFixed(2);
-    document.getElementById('sum-balance').innerText = s.balance.toFixed(2);
+        document.getElementById('transaction-table').innerHTML = allTransactions.map(t => `
+            <tr class="border-b">
+                <td class="py-3 px-4">${t.date}</td>
+                <td class="py-3 font-bold">${t.category}</td>
+                <td class="py-3 text-right font-black ${t.t_type === 'Income' ? 'text-green-600' : 'text-gray-900'}">${t.amount.toFixed(2)}</td>
+            </tr>
+        `).join('');
 
-    document.getElementById('transaction-table').innerHTML = allTransactions.map(t => `
-        <tr class="border-b">
-            <td class="py-3 px-4">${t.date}</td>
-            <td class="py-3 font-bold">${t.category}</td>
-            <td class="py-3 text-right font-black ${t.t_type === 'Income' ? 'text-green-600' : 'text-gray-900'}">${t.amount.toFixed(2)}</td>
-        </tr>
-    `).join('');
-
-    renderChart(allTransactions);
+        renderChart(allTransactions);
+    } catch (e) {
+        console.error("Data load error:", e);
+    }
 }
 
-// ✅ FIX APPLIED HERE
 async function addTransaction(e) {
     e.preventDefault();
-
     const payload = {
         t_type: document.getElementById('t-type').value,
         category: document.getElementById('t-cat').value,
@@ -258,15 +244,12 @@ async function addTransaction(e) {
         body: JSON.stringify(payload)
     });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-        console.error("ERROR:", data);
-        alert("Failed to save");
-    } else {
+    if (res.ok) {
         loadData();
         e.target.reset();
         document.getElementById('t-date').valueAsDate = new Date();
+    } else {
+        alert("Failed to save");
     }
 }
 
@@ -278,7 +261,6 @@ function logout() {
 function renderChart(data) {
     const ctx = document.getElementById('spendingChart').getContext('2d');
     if (spendingChart) spendingChart.destroy();
-
     spendingChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -295,12 +277,10 @@ function renderChart(data) {
 
 async function clearTransactions() {
     if (!confirm("Clear all?")) return;
-
     await fetch(`${API_URL}/transactions`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${authToken}` }
     });
-
     loadData();
 }
 </script>
