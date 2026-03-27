@@ -140,10 +140,8 @@
 </div>
 
 <script>
-// Replace this with your actual Render backend URL (e.g., https://expense-tracker.onrender.com)
-const API_URL = window.location.origin === "http://127.0.0.1:5500" 
-    ? "https://expense-trackerrr-f4nb.onrender.com/api" 
-    : "/api";
+// Logic to ensure the API_URL always points to your backend correctly
+const API_URL = "https://expense-trackerrr-f4nb.onrender.com/api";
 
 const SUPABASE_URL = "https://pvsegoyevnivyfllqmuv.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE";
@@ -207,7 +205,10 @@ function showDashboard() {
 
 async function loadData() {
     if (!authToken) return;
-    const headers = { "Authorization": `Bearer ${authToken}` };
+    const headers = { 
+        "Authorization": `Bearer ${authToken}`,
+        "Content-Type": "application/json"
+    };
     
     try {
         const res = await fetch(`${API_URL}/transactions`, { headers });
@@ -220,7 +221,7 @@ async function loadData() {
         document.getElementById('sum-expense').innerText = (s.total_spent || 0).toFixed(2);
         document.getElementById('sum-balance').innerText = (s.balance || 0).toFixed(2);
 
-        document.getElementById('transaction-table').innerHTML = allTransactions.map(t => `
+        document.getElementById('transaction-table').innerHTML = (allTransactions || []).map(t => `
             <tr class="border-b hover:bg-white/30 transition-colors">
                 <td class="py-3 px-4 text-gray-600 font-medium">${t.date}</td>
                 <td class="py-3 font-bold text-gray-800">${t.category}</td>
@@ -230,7 +231,7 @@ async function loadData() {
             </tr>
         `).join('');
 
-        renderChart(allTransactions);
+        renderChart(allTransactions || []);
     } catch (e) {
         console.error("Data load error:", e);
     }
@@ -238,11 +239,22 @@ async function loadData() {
 
 async function addTransaction(e) {
     e.preventDefault();
+    
+    // Get the current user from Supabase to ensure we have the UID
+    const { data: { user } } = await _supabase.auth.getUser();
+    
+    if (!user) {
+        alert("Session expired. Please login again.");
+        logout();
+        return;
+    }
+
     const payload = {
         t_type: document.getElementById('t-type').value,
         category: document.getElementById('t-cat').value,
         amount: parseFloat(document.getElementById('t-amt').value),
-        date: document.getElementById('t-date').value
+        date: document.getElementById('t-date').value,
+        user_id: user.id // Attached to pass RLS
     };
 
     try {
@@ -261,10 +273,10 @@ async function addTransaction(e) {
             document.getElementById('t-date').valueAsDate = new Date();
         } else {
             const errorData = await res.json();
-            alert(`Error: ${errorData.detail || "Failed to save"}`);
+            alert(`Error: ${errorData.message || errorData.detail || "Failed to save"}`);
         }
     } catch (err) {
-        alert("Connection error. Is the backend running?");
+        alert("Connection error. Check if your Render service is awake.");
     }
 }
 
@@ -274,10 +286,12 @@ function logout() {
 }
 
 function renderChart(data) {
-    const ctx = document.getElementById('spendingChart').getContext('2d');
+    const canvas = document.getElementById('spendingChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     if (spendingChart) spendingChart.destroy();
     
-    const chartData = [...data].reverse().slice(-7); // Last 7 entries
+    const chartData = [...data].reverse().slice(-7); 
     
     spendingChart = new Chart(ctx, {
         type: 'line',
@@ -302,11 +316,15 @@ function renderChart(data) {
 
 async function clearTransactions() {
     if (!confirm("Are you sure you want to delete all history?")) return;
-    await fetch(`${API_URL}/transactions`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${authToken}` }
-    });
-    loadData();
+    try {
+        await fetch(`${API_URL}/transactions`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${authToken}` }
+        });
+        loadData();
+    } catch (e) {
+        alert("Failed to clear transactions.");
+    }
 }
 </script>
 
