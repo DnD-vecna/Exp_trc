@@ -8,21 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 
-# --- APP INIT ---
-app = FastAPI(title="Expense Tracker API")
+app = FastAPI(title = "Expense Tracker APII")
 templates = Jinja2Templates(directory="templates")
 
-# --- SUPABASE CONFIG ---
-# These will be pulled from Render's Environment Variables
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise RuntimeError("Supabase credentials missing! Add them to Render Environment Variables.")
+SUPABASE_URL = os.getenv("https://pvsegoyevnivyfllqmuv.supabase.co")
+SUPABASE_KEY = os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2c2Vnb3lldm5pdnlmbGxxbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzAzMjgsImV4cCI6MjA5MDA0NjMyOH0.88nQJAS2k3CVGqPXMCW41tDt3uFpiCfR2ONPJIkWVvE")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- SCHEMAS ---
+# ---------- MODELS ----------
 class TransactionCreate(BaseModel):
     date: Optional[datetime.date] = None
     t_type: str
@@ -31,9 +25,9 @@ class TransactionCreate(BaseModel):
 
 class TransactionOut(TransactionCreate):
     id: int
-    user_id: str 
+    user_id: str
 
-# --- CORS ---
+# ---------- CORS ----------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,80 +36,97 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- AUTH DEPENDENCY ---
+# ---------- AUTH ----------
 def get_current_user(authorization: str = Header(None)):
     if not authorization:
-        raise HTTPException(status_code=401, detail="No Authorization header found")
-    
+        raise HTTPException(status_code=401, detail="No Authorization header")
+
     try:
-        # Expected format: "Bearer <JWT_TOKEN>"
         token = authorization.split(" ")[1]
-        user_resp = supabase.auth.get_user(token)
-        return user_resp.user
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired session")
 
-# --- ROUTES ---
+        # 🔥 USER-SCOPED CLIENT
+        client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        client.auth.set_session(access_token=token, refresh_token=token)
 
+        user = client.auth.get_user(token).user
+
+        return {"user": user, "client": client}
+
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+# ---------- ROUTES ----------
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html", context={})
+    return templates.TemplateResponse("index.html", {"request": request})
 
+# ADD TRANSACTION
 @app.post("/api/transactions", response_model=TransactionOut)
-def add_transaction(transaction: TransactionCreate, user=Depends(get_current_user)):
-    txn_date = str(transaction.date or datetime.date.today())
-    
+def add_transaction(transaction: TransactionCreate, ctx=Depends(get_current_user)):
+    user = ctx["user"]
+    client = ctx["client"]
+
     data = {
         "user_id": user.id,
-        "date": txn_date,
+        "date": str(transaction.date or datetime.date.today()),
         "t_type": transaction.t_type.capitalize(),
         "category": transaction.category,
         "amount": transaction.amount
     }
-    
-    response = supabase.table("transactions").insert(data).execute()
-    return response.data[0]
 
+    res = client.table("transactions").insert(data).execute()
+
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Insert failed")
+
+    return res.data[0]
+
+# GET TRANSACTIONS
 @app.get("/api/transactions", response_model=List[TransactionOut])
-def view_transactions(user=Depends(get_current_user)):
-    response = supabase.table("transactions")\
+def get_transactions(ctx=Depends(get_current_user)):
+    user = ctx["user"]
+    client = ctx["client"]
+
+    res = client.table("transactions")\
         .select("*")\
         .eq("user_id", user.id)\
         .order("date", desc=True)\
         .execute()
-    return response.data
 
+    return res.data
+
+# SUMMARY
 @app.get("/api/transactions/summary")
-def monthly_summary(user=Depends(get_current_user)):
+def summary(ctx=Depends(get_current_user)):
+    user = ctx["user"]
+    client = ctx["client"]
+
     today = datetime.date.today()
-    # Logic to get the start of the current month
     first_day = today.replace(day=1).isoformat()
-    
-    response = supabase.table("transactions")\
+
+    res = client.table("transactions")\
         .select("*")\
         .eq("user_id", user.id)\
         .gte("date", first_day)\
         .execute()
-    
-    txns = response.data
-    income = sum(t['amount'] for t in txns if t['t_type'].lower() == "income")
-    expense = sum(t['amount'] for t in txns if t['t_type'].lower() == "expense")
-    
-    categories = {}
-    for t in txns:
-        if t['t_type'].lower() == "expense":
-            cat = t['category']
-            categories[cat] = categories.get(cat, 0) + t['amount']
-            
+
+    txns = res.data
+
+    income = sum(t["amount"] for t in txns if t["t_type"].lower() == "income")
+    expense = sum(t["amount"] for t in txns if t["t_type"].lower() == "expense")
+
     return {
-        "month": f"{today.month}/{today.year}",
         "total_income": income,
         "total_spent": expense,
-        "balance": income - expense,
-        "expense_by_category": categories
+        "balance": income - expense
     }
 
+# DELETE
 @app.delete("/api/transactions")
-def clear_transactions(user=Depends(get_current_user)):
-    supabase.table("transactions").delete().eq("user_id", user.id).execute()
-    return {"message": "Success"}
+def delete_all(ctx=Depends(get_current_user)):
+    user = ctx["user"]
+    client = ctx["client"]
+
+    client.table("transactions").delete().eq("user_id", user.id).execute()
+
+    return {"message": "Deleted"}
