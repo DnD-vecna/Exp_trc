@@ -71,15 +71,11 @@ async def home(request: Request):
     )
 
 # ADD TRANSACTION
-# ADD TRANSACTION
 @app.post("/api/transactions", response_model=TransactionOut)
 def add_transaction(transaction: TransactionCreate, user=Depends(get_current_user)):
-
-    # We prepare the data, ensuring types match Supabase requirements
+    # Prepare data precisely
     data = {
-        # Using .id directly. Supabase-py handles the UUID conversion 
-        # as long as the string is a valid UUID format.
-        "user_id": user.id, 
+        "user_id": user.id, # No str() needed if it's already a string/UUID
         "date": str(transaction.date or datetime.date.today()),
         "t_type": transaction.t_type.capitalize(),
         "category": transaction.category,
@@ -87,18 +83,12 @@ def add_transaction(transaction: TransactionCreate, user=Depends(get_current_use
     }
 
     try:
-        # We execute the insert
+        # Explicitly use the supabase client
         res = supabase.table("transactions").insert(data).execute()
-        
-        if not res.data:
-            raise HTTPException(status_code=400, detail="Insert returned no data")
-            
         return res.data[0]
-
     except Exception as e:
-        # This will show the REAL error in your Render Logs
-        print(f"DEBUG ERROR: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"DATABASE ERROR: {e}")
+        raise HTTPException(status_code=500, detail="Database insert failed")
 
 # GET TRANSACTIONS
 @app.get("/api/transactions", response_model=List[TransactionOut])
