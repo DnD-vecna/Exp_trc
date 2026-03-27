@@ -81,7 +81,7 @@ async def home(request: Request):
 async def add_transaction(transaction: TransactionCreate, user=Depends(get_current_user)):
     try:
         payload = {
-            "user_id": str(user.id),
+            "user_id": user.id,
             "date": str(transaction.date or datetime.date.today()),
             "t_type": transaction.t_type.capitalize(),
             "category": transaction.category,
