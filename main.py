@@ -8,11 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 
-app = FastAPI(title = "Expense Tracker APII")
+app = FastAPI(title="Expense Tracker API")
 templates = Jinja2Templates(directory="templates")
 
+# --- SUPABASE CONFIG ---
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("❌ ERROR: Supabase Environment Variables are missing!")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -40,34 +44,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------- AUTH ----------
-# ---------- AUTH ----------
+# ---------- AUTH HELPER ----------
 def get_current_user(authorization: str = Header(None)):
     if not authorization:
         raise HTTPException(status_code=401, detail="No Authorization header")
 
     try:
-        # Expecting "Bearer <token>"
         scheme, token = authorization.split()
         if scheme.lower() != 'bearer':
             raise HTTPException(status_code=401, detail="Invalid authentication scheme")
 
-        # Use the GLOBAL client to get the user
-        # This validates the JWT with Supabase Auth
         res = supabase.auth.get_user(token)
-        
         if not res.user:
-            raise HTTPException(status_code=401, detail="Invalid user")
+            raise HTTPException(status_code=401, detail="Invalid user session")
 
         return res.user
-
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Auth error: {str(e)}")
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
 # ---------- ROUTES ----------
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    # Change this line:
     return templates.TemplateResponse(
         request=request, 
         name="index.html", 
@@ -78,7 +76,6 @@ async def home(request: Request):
 @app.post("/api/transactions")
 async def add_transaction(transaction: TransactionCreate, user=Depends(get_current_user)):
     try:
-        # 1. Prepare data - ensuring user.id is a clean string for the UUID column
         payload = {
             "user_id": str(user.id),
             "date": str(transaction.date or datetime.date.today()),
@@ -87,60 +84,65 @@ async def add_transaction(transaction: TransactionCreate, user=Depends(get_curre
             "amount": float(transaction.amount)
         }
         
-        # 2. Insert into Supabase
         res = supabase.table("transactions").insert(payload).execute()
         
-        # 3. Return the first row directly without strict model validation
         if res.data:
             return res.data[0]
         
-        raise HTTPException(status_code=400, detail="Database returned no data")
+        raise HTTPException(status_code=400, detail="Database rejected the insert.")
 
     except Exception as e:
-        # This will send the EXACT error message to your browser console
-        print(f"DEBUG ERROR: {str(e)}")
+        print(f"DEBUG ADD ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # GET TRANSACTIONS
 @app.get("/api/transactions", response_model=List[TransactionOut])
-def get_transactions(user=Depends(get_current_user)):
-    # Use the global supabase client
-    res = supabase.table("transactions")\
-        .select("*")\
-        .eq("user_id", user.id)\
-        .order("date", desc=True)\
-        .execute()
-
-    return res.data
+async def get_transactions(user=Depends(get_current_user)):
+    try:
+        res = supabase.table("transactions")\
+            .select("*")\
+            .eq("user_id", user.id)\
+            .order("date", desc=True)\
+            .execute()
+        return res.data
+    except Exception as e:
+        print(f"DEBUG GET ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # SUMMARY
 @app.get("/api/transactions/summary")
-def summary(user=Depends(get_current_user)):
+async def summary(user=Depends(get_current_user)):
+    try:
+        today = datetime.date.today()
+        first_day = today.replace(day=1).isoformat()
 
-    today = datetime.date.today()
-    first_day = today.replace(day=1).isoformat()
+        res = supabase.table("transactions")\
+            .select("*")\
+            .eq("user_id", user.id)\
+            .gte("date", first_day)\
+            .execute()
 
-    res = supabase.table("transactions")\
-        .select("*")\
-        .eq("user_id", user.id)\
-        .gte("date", first_day)\
-        .execute()
+        txns = res.data or []
+        
+        # Consistent case comparison
+        income = sum(t["amount"] for t in txns if t["t_type"].lower() == "income")
+        expense = sum(t["amount"] for t in txns if t["t_type"].lower() == "expense")
 
-    txns = res.data
-
-    income = sum(t["amount"] for t in txns if t["t_type"].lower() == "income")
-    expense = sum(t["amount"] for t in txns if t["t_type"].lower() == "expense")
-
-    return {
-        "total_income": income,
-        "total_spent": expense,
-        "balance": income - expense
-    }
+        return {
+            "total_income": round(income, 2),
+            "total_spent": round(expense, 2),
+            "balance": round(income - expense, 2)
+        }
+    except Exception as e:
+        print(f"DEBUG SUMMARY ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # DELETE
 @app.delete("/api/transactions")
-def delete_all(user=Depends(get_current_user)):
-
-    supabase.table("transactions").delete().eq("user_id", user.id).execute()
-
-    return {"message": "Deleted"}
+async def delete_all(user=Depends(get_current_user)):
+    try:
+        supabase.table("transactions").delete().eq("user_id", user.id).execute()
+        return {"message": "All transactions deleted"}
+    except Exception as e:
+        print(f"DEBUG DELETE ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
